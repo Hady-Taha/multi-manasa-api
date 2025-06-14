@@ -63,4 +63,5 @@ class StudentSignUpSerializer(serializers.ModelSerializer):
         user_data = validated_data.pop('user')
         user = User.objects.create_user(**user_data)
         student = Student.objects.create(user=user, **validated_data)
+        student_wallet = StudentWallet.objects.create(student=student)
         return student
