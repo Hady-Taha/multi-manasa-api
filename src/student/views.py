@@ -81,3 +81,17 @@ class StudentSignUpView(APIView):
         # If validation fails, return the errors in the response
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+
+#* < ==============================[ <- Profile  -> ]============================== > ^#
+
+class StudentProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        student = get_object_or_404(
+            Student.objects.select_related('user', 'education_type', 'year'),
+            user=request.user
+        )
+        res_data = StudentProfileSerializer(student).data
+        return Response(res_data, status=status.HTTP_200_OK)
