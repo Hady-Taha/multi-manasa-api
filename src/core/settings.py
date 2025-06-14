@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'storages',
     'django_filters',
     #* Apps
+    'student',
 ]
 
 MIDDLEWARE = [
