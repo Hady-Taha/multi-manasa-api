@@ -31,6 +31,7 @@ class StudentProfileSerializer(serializers.ModelSerializer):
 
 
 class StudentSignUpSerializer(serializers.ModelSerializer):
+
     username = serializers.CharField(source='user.username', required=True)
     password = serializers.CharField(source='user.password', write_only=True, required=True)
     email = serializers.EmailField(source='user.email', required=False)  # Email is optional
@@ -65,3 +66,4 @@ class StudentSignUpSerializer(serializers.ModelSerializer):
         student = Student.objects.create(user=user, **validated_data)
         student_wallet = StudentWallet.objects.create(student=student)
         return student
+    
