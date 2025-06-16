@@ -69,3 +69,28 @@ class Course(models.Model):
         
         # Call the save method once after all modifications
         super().save(*args, **kwargs)
+
+
+class Unit(models.Model):
+    # allows reverse lookup: parent.sub_units.all()
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    price = models.PositiveIntegerField(default=0)
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    free = models.BooleanField(default=False)
+    pending = models.BooleanField(default=False)
+    parent = models.ForeignKey('self',on_delete=models.CASCADE,null=True,blank=True,related_name='sub_units')
+    updated  = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.parent:
+            return f"{self.parent} > {self.name}"
+        return self.name
+
+    def get_discounted_price(self):
+        if self.discount > 0:
+            discount_amount = (self.price * self.discount) / 100
+            return max(0, self.price - discount_amount)
+        return self.price
+    
