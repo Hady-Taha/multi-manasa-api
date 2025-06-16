@@ -24,7 +24,7 @@ from .models import *
 from .serializers import *
 
 class ListCourseView(generics.ListAPIView):
-    queryset = Course.objects.all()
+    queryset = Course.objects.filter(pending=False)
     serializer_class = CourseListSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['year','category','teacher']
@@ -32,15 +32,5 @@ class ListCourseView(generics.ListAPIView):
 
 
 
-class CreateCourseView(generics.CreateAPIView):
-    queryset = Course.objects.all()
-    serializer_class = CourseCreateSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        # Check if user is a teacher
-        if not hasattr(self.request.user, 'teacher'):
-            raise PermissionDenied("This user is not a teacher.")
-        serializer.save(teacher=self.request.user.teacher)
 
 

@@ -1,7 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from course.models import Course
 from .models import *
 
+#* < ==============================[ <- Profile  -> ]============================== > ^#
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
     user__username = serializers.CharField(source="user.username")
@@ -13,7 +15,6 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'government',
             'active',
         ]
-
 
 
 class TeacherSignUpSerializer(serializers.ModelSerializer):
@@ -47,3 +48,30 @@ class TeacherSignUpSerializer(serializers.ModelSerializer):
         teacher = Teacher.objects.create(user=user, **validated_data)
         return teacher
     
+#* < ==============================[ <- Course  -> ]============================== > ^#
+
+class CourseCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = [
+            'name',
+            'description',
+            'price',
+            'category',
+            'discount',
+            'year',
+            'cover',
+            'promo_video',
+            'eduction_type',
+            'time',
+            'free',
+            'pending',
+            'is_center',
+            'points',
+        ]
+
+class CoursesListViewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = '__all__'
+

@@ -24,24 +24,3 @@ class CourseListSerializer(serializers.ModelSerializer):
             'points',
         ]
 
-
-class CourseCreateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Course
-        fields = [
-            'name',
-            'description',
-            'price',
-            'category',
-            'discount',
-            'year',
-            'cover',
-            'promo_video',
-            'eduction_type',
-            'time',
-            'free',
-            'pending',
-            'is_center',
-            'points',
-        ]
-        

@@ -1,4 +1,5 @@
 from rest_framework.permissions import BasePermission,DjangoModelPermissions
+from rest_framework.exceptions import PermissionDenied
 from django.conf import settings
 
 class HasValidAPIKey(BasePermission):
@@ -20,3 +21,14 @@ class CustomDjangoModelPermissions(DjangoModelPermissions):
         'PATCH': ['%(app_label)s.change_%(model_name)s'],
         'DELETE': ['%(app_label)s.delete_%(model_name)s'],
     }
+
+
+
+class IsTeacher(BasePermission):
+    """
+    Allows access only to users who are teachers.
+    """
+    def has_permission(self, request, view):
+        if not hasattr(request.user, 'teacher'):
+            raise PermissionDenied("This user is not a teacher.")
+        return True
