@@ -10,5 +10,10 @@ urlpatterns = [
     path("course/my-courses/",views.CoursesListView.as_view(), name="my_course_view"),
     path("course/create/",views.CreateCourseView.as_view(), name="create_course_view"),
     path("course/update/<int:id>/", views.UpdateCourseView.as_view(), name="update_course_view"),
-    path("course/delete/",views.DeleteCourseView.as_view(), name="delete_course_view"),
+    path("course/delete/<int:id>/",views.DeleteCourseView.as_view(), name="delete_course_view"),
+    #* < ==============================[ <- Unit -> ]============================== > ^#
+    path('course/<int:course_id>/unit/create/', views.UnitCreateView.as_view(), name="unit-create"),
+    path('course/<int:course_id>/unit/list/', views.UnitListView.as_view(), name="unit-list"),
+    path('course/<int:course_id>/unit/update/<int:id>/', views.UnitUpdateView.as_view(), name="unit-update"),
+    path('course/<int:course_id>/unit/delete/<int:id>/', views.UnitDeleteView.as_view(), name="unit-delete"),
 ]

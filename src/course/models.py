@@ -76,10 +76,12 @@ class Unit(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     price = models.PositiveIntegerField(default=0)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='units')  # ✅ Add this
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     free = models.BooleanField(default=False)
     pending = models.BooleanField(default=False)
     parent = models.ForeignKey('self',on_delete=models.CASCADE,null=True,blank=True,related_name='sub_units')
+    order = models.IntegerField(default=1) 
     updated  = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 

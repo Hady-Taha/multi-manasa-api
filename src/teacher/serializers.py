@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from course.models import Course
+from course.models import Course,Unit
 from .models import *
 
 #* < ==============================[ <- Profile  -> ]============================== > ^#
@@ -48,7 +48,7 @@ class TeacherSignUpSerializer(serializers.ModelSerializer):
         teacher = Teacher.objects.create(user=user, **validated_data)
         return teacher
     
-#* < ==============================[ <- Course  -> ]============================== > ^#
+#* < ==============================[ <- Course -> ]============================== > ^#
 
 class CourseCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -74,4 +74,59 @@ class CoursesListViewSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = '__all__'
+
+#* < ==============================[ <- Unit -> ]============================== > ^#
+
+class UnitCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Unit
+        fields = [ 
+            'id',
+            'name', 
+            'description', 
+            'price', 
+            'discount', 
+            'free', 
+            'pending',
+            'order', 
+            'parent',
+        ]
+
+    def validate_parent(self, parent):
+        if parent is None:
+            return parent
+
+        # Get course from view context
+        course_id = self.context['view'].kwargs.get('course_id')
+        request = self.context['request']
+
+        if parent.course.id != int(course_id):
+            raise serializers.ValidationError("The parent unit must belong to the same course.")
+
+        if parent.course.teacher != request.user.teacher:
+            raise serializers.ValidationError("You do not have permission to assign this parent unit.")
+
+        return parent
+
+
+class UnitListSerializer(serializers.ModelSerializer):
+    sub_units = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Unit
+        fields = [
+            'id',
+            'name',
+            'description',
+            'price',
+            'discount',
+            'free',
+            'pending',
+            'sub_units',
+        ]
+
+    def get_sub_units(self, obj):
+        sub_units = obj.sub_units.all()
+        return UnitListSerializer(sub_units, many=True).data
+    
 

@@ -16,7 +16,7 @@ from rest_framework import generics
 from core.permissions import IsTeacher
 from .models import *
 from .serializers import *
-from course.models import Course
+from course.models import Course,Unit
 # Create your views here.
 
 #* < ==============================[ <- Authentication -> ]============================== > ^#
@@ -127,16 +127,76 @@ class UpdateCourseView(generics.UpdateAPIView):
         return course
 
 
-class DeleteCourseView(APIView):
-    permission_classes = [IsAuthenticated,IsTeacher]
+class DeleteCourseView(generics.DestroyAPIView):
+    queryset = Course.objects.all()
+    permission_classes = [IsAuthenticated, IsTeacher]
+    lookup_field = 'id'  # use URL parameter <int:id>
+
+    def get_object(self):
+        user = self.request.user
+        obj = super().get_object()
+        if obj.teacher != user.teacher:
+            raise NotFound("Course not found or you do not have permission to delete it.")
+        return obj
 
     def delete(self, request, *args, **kwargs):
-        user = request.user
-
-        course_id = request.data.get('course_id')
-        try:
-            course = Course.objects.get(id=course_id, teacher=user.teacher)
-        except Course.DoesNotExist:
-            raise NotFound("Course not found or you do not have permission to delete it.")
+        course = self.get_object()
         course.delete()
         return Response({"message": "Course deleted successfully."}, status=status.HTTP_200_OK)
+
+#* < ==============================[ <- Unit  -> ]============================== > ^#
+
+class UnitCreateView(generics.CreateAPIView):
+    serializer_class = UnitCreateSerializer
+    permission_classes = [IsAuthenticated,IsTeacher]
+
+    def perform_create(self, serializer):
+        course_id = self.kwargs.get('course_id')
+        try:
+            course = Course.objects.get(id=course_id, teacher=self.request.user.teacher)
+        except Course.DoesNotExist:
+            raise NotFound("Course not found or you do not have permission.")
+        serializer.save(course=course)
+
+
+class UnitListView(generics.ListAPIView):
+    serializer_class = UnitListSerializer
+    permission_classes = [IsAuthenticated,IsTeacher]
+
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        try:
+            course = Course.objects.get(id=course_id, teacher=self.request.user.teacher)
+        except Course.DoesNotExist:
+            raise NotFound("Course not found or you do not have permission.")
+        return Unit.objects.filter(course=course, parent__isnull=True)
+    
+
+
+class UnitUpdateView(generics.UpdateAPIView):
+    serializer_class = UnitCreateSerializer
+    permission_classes = [IsAuthenticated,IsTeacher]
+    lookup_url_kwarg = 'id'
+
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        try:
+            course = Course.objects.get(id=course_id, teacher=self.request.user.teacher)
+        except Course.DoesNotExist:
+            raise NotFound("Course not found or you do not have permission.")
+        return Unit.objects.filter(course=course)
+    
+
+
+class UnitDeleteView(generics.DestroyAPIView):
+    serializer_class = UnitListSerializer
+    permission_classes = [IsAuthenticated,IsTeacher]
+    lookup_url_kwarg = 'id'
+
+    def get_queryset(self):
+        course_id = self.kwargs.get('course_id')
+        try:
+            course = Course.objects.get(id=course_id, teacher=self.request.user.teacher)
+        except Course.DoesNotExist:
+            raise NotFound("Course not found or you do not have permission.")
+        return Unit.objects.filter(course=course)
