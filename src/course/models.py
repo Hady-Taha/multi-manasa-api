@@ -7,6 +7,10 @@ from teacher.models import Teacher
 from student.models import Year,EducationType,DivisionType
 # Create your models here.
 
+class StreamType(models.TextChoices):
+    YOUTUBE = "youtube", "youtube"
+    EASYSTREAM = "easystream", "easystream"
+
 
 class CourseCategory(models.Model):
     name = models.CharField(max_length=255)
@@ -31,7 +35,7 @@ class Course(models.Model):
     eduction_type = models.ForeignKey(EducationType, blank=True, null=True, on_delete=models.CASCADE)
     time = models.IntegerField(default=0)
     free = models.BooleanField(default=False)
-    pending = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
     is_center = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
     updated  = models.DateTimeField(auto_now=True)
@@ -79,7 +83,7 @@ class Unit(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='units')  # ✅ Add this
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     free = models.BooleanField(default=False)
-    pending = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
     parent = models.ForeignKey('self',on_delete=models.CASCADE,null=True,blank=True,related_name='sub_units')
     order = models.IntegerField(default=1) 
     updated  = models.DateTimeField(auto_now=True)
@@ -96,3 +100,23 @@ class Unit(models.Model):
             return max(0, self.price - discount_amount)
         return self.price
     
+
+class Video(models.Model):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    unit = models.ForeignKey(Unit, related_name="unit_videos", on_delete=models.CASCADE)
+    can_view = models.IntegerField(default=5)
+    total_views = models.IntegerField(default=0)
+    price = models.PositiveIntegerField(default=0)
+    duration = models.IntegerField(blank=True, null=True)
+    stream_type = models.CharField(max_length=20,choices=StreamType.choices)
+    stream_link = models.CharField(max_length=255)
+    order = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=False)
+    is_hide_youtube = models.BooleanField(default=False)
+    is_encrypt = models.BooleanField(default=True)
+    points = models.PositiveIntegerField(default=5)
+    updated  = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f'{self.name} - id :{self.id}'

@@ -19,7 +19,7 @@ class CourseListSerializer(serializers.ModelSerializer):
             'eduction_type',
             'time',
             'free',
-            'pending',
+            'is_active',
             'is_center',
             'points',
         ]

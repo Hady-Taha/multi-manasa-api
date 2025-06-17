@@ -24,7 +24,7 @@ from .models import *
 from .serializers import *
 
 class ListCourseView(generics.ListAPIView):
-    queryset = Course.objects.filter(pending=False)
+    queryset = Course.objects.filter(is_active=False)
     serializer_class = CourseListSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['year','category','teacher']
