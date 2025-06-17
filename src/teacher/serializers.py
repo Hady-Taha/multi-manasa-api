@@ -65,7 +65,7 @@ class CourseCreateSerializer(serializers.ModelSerializer):
             'eduction_type',
             'time',
             'free',
-            'pending',
+            'is_active',
             'is_center',
             'points',
         ]
@@ -87,7 +87,7 @@ class UnitCreateSerializer(serializers.ModelSerializer):
             'price', 
             'discount', 
             'free', 
-            'pending',
+            'is_active',
             'order', 
             'parent',
         ]
@@ -121,7 +121,7 @@ class UnitListSerializer(serializers.ModelSerializer):
             'price',
             'discount',
             'free',
-            'pending',
+            'is_active',
             'sub_units',
         ]
 
