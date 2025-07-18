@@ -172,8 +172,6 @@ class UnitUpdateView(generics.UpdateAPIView):
     lookup_url_kwarg = 'id'
 
 
-    
-
 class UnitDeleteView(generics.DestroyAPIView):
     serializer_class = UnitListSerializer
     permission_classes = [IsAuthenticated,IsTeacher]
@@ -186,3 +184,5 @@ class UnitDeleteView(generics.DestroyAPIView):
         except Course.DoesNotExist:
             raise NotFound("Course not found or you do not have permission.")
         return Unit.objects.filter(course=course)
+
+#* < ==============================[ <- Content -> ]============================== > ^#

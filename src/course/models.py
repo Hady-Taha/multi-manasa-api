@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.core.validators import FileExtensionValidator
 from django.core.files.base import ContentFile
@@ -6,10 +7,6 @@ from io import BytesIO
 from teacher.models import Teacher
 from student.models import Year,EducationType,DivisionType
 # Create your models here.
-
-class StreamType(models.TextChoices):
-    YOUTUBE = "youtube", "youtube"
-    EASYSTREAM = "easystream", "easystream"
 
 
 class CourseCategory(models.Model):
@@ -35,7 +32,7 @@ class Course(models.Model):
     eduction_type = models.ForeignKey(EducationType, blank=True, null=True, on_delete=models.CASCADE)
     time = models.IntegerField(default=0)
     free = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    pending = models.BooleanField(default=True)
     is_center = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
     updated  = models.DateTimeField(auto_now=True)
@@ -76,14 +73,13 @@ class Course(models.Model):
 
 
 class Unit(models.Model):
-    # allows reverse lookup: parent.sub_units.all()
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     price = models.PositiveIntegerField(default=0)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='units')  # ✅ Add this
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='units')
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     free = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    pending = models.BooleanField(default=True)
     parent = models.ForeignKey('self',on_delete=models.CASCADE,null=True,blank=True,related_name='sub_units')
     order = models.IntegerField(default=1) 
     updated  = models.DateTimeField(auto_now=True)
@@ -100,23 +96,64 @@ class Unit(models.Model):
             return max(0, self.price - discount_amount)
         return self.price
     
+#*============================>Unit Content<============================#*
+
+class StreamType(models.TextChoices):
+    EASYSTREAM_ENCRYPTED = "easystream_encrypt", "easystream encrypted"
+    EASYSTREAM_NOT_ENCRYPTED = "easystream_not_encrypted", "easystream not encrypted"
+    YOUTUBE_HIDE = "youtube_hide", "youtube hide"
+    YOUTUBE_SHOW = "youtube_show", "youtube show"
+    VDOCIPHER = "vdocipher","vdocipher",
+    VIMEO = "vimeo","vimeo",
 
 class Video(models.Model):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=250)
     description = models.TextField(blank=True, null=True)
     unit = models.ForeignKey(Unit, related_name="unit_videos", on_delete=models.CASCADE)
     can_view = models.IntegerField(default=5)
-    total_views = models.IntegerField(default=0)
-    price = models.PositiveIntegerField(default=0)
+    views = models.IntegerField(default=0)
     duration = models.IntegerField(blank=True, null=True)
-    stream_type = models.CharField(max_length=20,choices=StreamType.choices)
+    stream_type = models.CharField(max_length=24,choices=StreamType.choices)
     stream_link = models.CharField(max_length=255)
     order = models.PositiveIntegerField(default=1)
-    is_active = models.BooleanField(default=True)
-    is_hide_youtube = models.BooleanField(default=False)
-    is_encrypt = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    publisher_date = models.DateTimeField(blank=True, null=True)
+    pending = models.BooleanField(default=False)
+    ready = models.BooleanField(default=False)
+    can_buy =  models.BooleanField(default=False)
+    free = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
-    updated  = models.DateTimeField(auto_now=True)
+    barcode = models.UUIDField(default=uuid.uuid4,unique=True,editable=False)
+    embed = models.BooleanField(default=False)
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
         return f'{self.name} - id :{self.id}'
+    
+
+
+class VideoFile(models.Model):
+    name = models.CharField(max_length=50,blank=True, null=True)
+    video = models.ForeignKey(Video, related_name="video_files", on_delete=models.CASCADE)
+    file = models.FileField(upload_to='videos/files/',validators=[FileExtensionValidator(allowed_extensions=['pdf'])])
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'File for {self.video.name} - {self.file.name}'
+    
+
+
+class File(models.Model):
+    name = models.CharField(max_length=255)
+    file = models.FileField(upload_to='videos/files/',validators=[FileExtensionValidator(allowed_extensions=['pdf'])])
+    pending = models.BooleanField(default=False)
+    unit = models.ForeignKey(Unit, related_name='unit_files', on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=1)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name} - {self.unit.name}'
+    

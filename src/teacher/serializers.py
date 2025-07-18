@@ -65,7 +65,7 @@ class CourseCreateSerializer(serializers.ModelSerializer):
             'eduction_type',
             'time',
             'free',
-            'is_active',
+            'pending',
             'is_center',
             'points',
         ]
@@ -76,6 +76,31 @@ class CoursesListViewSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 #* < ==============================[ <- Unit -> ]============================== > ^#
+
+class SubunitSerializer(serializers.ModelSerializer):
+    sub_id = serializers.IntegerField(source='id')
+    
+    class Meta:
+        model = Unit
+        fields = ['sub_id', 'description','name', 'order', 'created', 'pending','updated']
+
+
+class UnitListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Unit
+        fields = [
+            'id',
+            'name',
+            'description',
+            'price',
+            'discount',
+            'free',
+            'pending',
+            'sub_units',
+        ]
+
+    
 
 class UnitCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -88,7 +113,7 @@ class UnitCreateSerializer(serializers.ModelSerializer):
             'price', 
             'discount', 
             'free', 
-            'is_active',
+            'pending',
             'order', 
             'parent',
         ]
@@ -98,7 +123,12 @@ class UnitCreateSerializer(serializers.ModelSerializer):
         if parent:
             if parent.course.teacher != request.user.teacher:
                 raise serializers.ValidationError("You do not have permission to assign this parent unit.")
-        
+            
+            if parent.parent:
+                raise serializers.ValidationError({
+                    "parent": "Nested subunits are not allowed. You can only create one level of subunits."
+                })
+
         return parent
     
     def validate_course(self,course):
@@ -106,26 +136,4 @@ class UnitCreateSerializer(serializers.ModelSerializer):
         if course.teacher != request.user.teacher:
             raise serializers.ValidationError("You do not have permission to assign this parent unit.")
         return course
-    
-
-class UnitListSerializer(serializers.ModelSerializer):
-    sub_units = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Unit
-        fields = [
-            'id',
-            'name',
-            'description',
-            'price',
-            'discount',
-            'free',
-            'is_active',
-            'sub_units',
-        ]
-
-    def get_sub_units(self, obj):
-        sub_units = obj.sub_units.all()
-        return UnitListSerializer(sub_units, many=True).data
-    
 
