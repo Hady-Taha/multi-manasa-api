@@ -82,6 +82,7 @@ class UnitCreateSerializer(serializers.ModelSerializer):
         model = Unit
         fields = [ 
             'id',
+            'course',
             'name', 
             'description', 
             'price', 
@@ -93,21 +94,19 @@ class UnitCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate_parent(self, parent):
-        if parent is None:
-            return parent
-
-        # Get course from view context
-        course_id = self.context['view'].kwargs.get('course_id')
         request = self.context['request']
-
-        if parent.course.id != int(course_id):
-            raise serializers.ValidationError("The parent unit must belong to the same course.")
-
-        if parent.course.teacher != request.user.teacher:
-            raise serializers.ValidationError("You do not have permission to assign this parent unit.")
-
+        if parent:
+            if parent.course.teacher != request.user.teacher:
+                raise serializers.ValidationError("You do not have permission to assign this parent unit.")
+        
         return parent
-
+    
+    def validate_course(self,course):
+        request = self.context['request']
+        if course.teacher != request.user.teacher:
+            raise serializers.ValidationError("You do not have permission to assign this parent unit.")
+        return course
+    
 
 class UnitListSerializer(serializers.ModelSerializer):
     sub_units = serializers.SerializerMethodField()

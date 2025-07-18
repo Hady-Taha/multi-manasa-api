@@ -147,16 +147,9 @@ class DeleteCourseView(generics.DestroyAPIView):
 #* < ==============================[ <- Unit  -> ]============================== > ^#
 
 class UnitCreateView(generics.CreateAPIView):
+    queryset = Unit.objects.all()
     serializer_class = UnitCreateSerializer
     permission_classes = [IsAuthenticated,IsTeacher]
-
-    def perform_create(self, serializer):
-        course_id = self.kwargs.get('course_id')
-        try:
-            course = Course.objects.get(id=course_id, teacher=self.request.user.teacher)
-        except Course.DoesNotExist:
-            raise NotFound("Course not found or you do not have permission.")
-        serializer.save(course=course)
 
 
 class UnitListView(generics.ListAPIView):
@@ -172,21 +165,14 @@ class UnitListView(generics.ListAPIView):
         return Unit.objects.filter(course=course, parent__isnull=True)
     
 
-
 class UnitUpdateView(generics.UpdateAPIView):
     serializer_class = UnitCreateSerializer
-    permission_classes = [IsAuthenticated,IsTeacher]
+    queryset = Unit.objects.all()
+    permission_classes = [IsAuthenticated, IsTeacher]
     lookup_url_kwarg = 'id'
 
-    def get_queryset(self):
-        course_id = self.kwargs.get('course_id')
-        try:
-            course = Course.objects.get(id=course_id, teacher=self.request.user.teacher)
-        except Course.DoesNotExist:
-            raise NotFound("Course not found or you do not have permission.")
-        return Unit.objects.filter(course=course)
-    
 
+    
 
 class UnitDeleteView(generics.DestroyAPIView):
     serializer_class = UnitListSerializer
