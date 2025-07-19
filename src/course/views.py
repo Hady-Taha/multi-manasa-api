@@ -31,8 +31,8 @@ class CourseCategoryListView(generics.ListAPIView):
 class CourseListView(generics.ListAPIView):
     serializer_class = CourseSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['year','category']
-    search_fields = ['name']
+    filterset_fields = ['teacher','year','category']
+    search_fields = ['name', 'category__name']
 
     def get_queryset(self):
         # Base queryset
