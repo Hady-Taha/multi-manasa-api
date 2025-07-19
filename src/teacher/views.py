@@ -15,12 +15,13 @@ from rest_framework.exceptions import  NotFound
 from rest_framework import generics
 # FILES
 from core.permissions import IsTeacher
+from exam.serializers import ExamSerializer
+from exam.models import Exam
+from subscription.models import CourseSubscription
 from .models import *
 from .serializers.profile.profile import *
 from .serializers.course.course import *
-from exam.serializers import ExamSerializer
-from exam.models import Exam
-# Create your views here.
+from .serializers.student.student import*
 
 #* < ==============================[ <- Authentication -> ]============================== > ^#
 
@@ -329,6 +330,18 @@ class UnitContentView(APIView):
     
 
 #* < ==============================[ <- Student -> ]============================== > ^#
+
+class TeacherListStudentView(generics.ListAPIView):
+    serializer_class = TeacherStudentSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def get_queryset(self):
+        return Student.objects.filter(
+            coursesubscription__course__teacher=self.request.user.teacher
+        ).distinct()
+        
+        
+        
 class TeacherCenterStudentSignUpView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -339,5 +352,5 @@ class TeacherCenterStudentSignUpView(APIView):
         get_code.is_available = False
         get_code.save()
         return Response(status=status.HTTP_200_OK)
-        
-        
+
+

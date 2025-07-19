@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from student.models import Student
 from course.models import Course,Video
+from teacher.models import Teacher
 # Create your models here.
 
 class PromoCode(models.Model):
@@ -49,6 +50,7 @@ class InvoiceMethodPayType(models.TextChoices):
     FREE = "free","Free"
 
 class Invoice(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, blank=True, null=True)
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
     pay_status = models.CharField(max_length=10,choices=InvoicePayStatus.choices,default='pending')
     pay_method = models.CharField(max_length=10,choices=InvoiceMethodPayType.choices,)

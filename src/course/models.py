@@ -106,6 +106,7 @@ class StreamType(models.TextChoices):
 
 
 class Video(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE,blank=True, null=True)
     name = models.CharField(max_length=250)
     description = models.TextField(blank=True, null=True)
     unit = models.ForeignKey(Unit, related_name="unit_videos", on_delete=models.CASCADE)
@@ -130,6 +131,11 @@ class Video(models.Model):
     def __str__(self):
         return f'{self.name} - id :{self.id}'
     
+    
+    def save(self, *args, **kwargs):
+        if self.teacher is None:
+            self.teacher = self.unit.course.teacher
+        super(Video, self).save(*args, **kwargs) # Call the real save() method
 
 
 class VideoFile(models.Model):

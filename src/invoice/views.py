@@ -57,6 +57,7 @@ class PayWithEasyPay(APIView):
         # free item
         if item.price == 0 or item.free :
             invoice = Invoice.objects.create(
+                teacher=item.teacher,
                 student=student,
                 pay_status=InvoicePayStatus.PAID,
                 pay_method=InvoiceMethodPayType.FREE,
@@ -98,6 +99,7 @@ class PayWithEasyPay(APIView):
             
         # PAID ITEM
         invoice=Invoice.objects.create(
+            teacher=item.teacher,
             student=student,
             pay_method=InvoiceMethodPayType.EASY_PAY,
             promo_code=applied_promo,
