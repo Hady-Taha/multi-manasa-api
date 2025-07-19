@@ -326,3 +326,18 @@ class UnitContentView(APIView):
             key=lambda x: x.get('order', 0)
         )
         return combined_content
+    
+
+#* < ==============================[ <- Student -> ]============================== > ^#
+class TeacherCenterStudentSignUpView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        code = request.data.get('code')
+        get_code = get_object_or_404(TeacherCenterStudentCode, code=code, is_available=True)
+        get_code.student = request.user.student
+        get_code.is_available = False
+        get_code.save()
+        return Response(status=status.HTTP_200_OK)
+        
+        

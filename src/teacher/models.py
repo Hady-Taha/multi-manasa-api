@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-from student.models import Year
+from student.models import Year,Student
 # Create your models here.
 
 class Teacher(models.Model):
@@ -13,3 +13,15 @@ class Teacher(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return f'{self.name} | {self.id}'
+    
+
+class TeacherCenterStudentCode(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, blank=True, null=True)
+    code = models.CharField(max_length=100, unique=True)
+    is_available = models.BooleanField(default=True)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.teacher.name} | | {self.code} | {self.is_available} '
