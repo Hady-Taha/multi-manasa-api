@@ -1,36 +1,150 @@
-import random
-import datetime
-# DJANGO LIB
-from django.http import HttpRequest
-from django.conf import settings
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
-from django.core.cache import cache
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.exceptions import PermissionDenied
-from django.utils import timezone
-#REST LIB
+from django.db.models import Q
+from django.conf import settings
+from rest_framework.filters import SearchFilter
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import AccessToken,RefreshToken
-from rest_framework.test import APIRequestFactory
 from rest_framework import generics
-from rest_framework.filters import SearchFilter
-# FILES
-from .models import *
-from .serializers import *
+from exam.serializers import ExamSerializer
+from .models import CourseCategory,Course,Unit
+from .serializers import CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
 
-class ListCourseView(generics.ListAPIView):
-    queryset = Course.objects.filter(pending=False)
-    serializer_class = CourseListSerializer
+# Create your views here.
+#* < ==============================[ <- Categories -> ]============================== > ^#
+
+class CourseCategoryListView(generics.ListAPIView):
+    queryset = CourseCategory.objects.all()
+    serializer_class = CourseCategorySerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['year','category','teacher']
-    search_fields = ['name','teacher__name']
+    filterset_fields = ['name']
+    search_fields = ['name']
 
 
+#* < ==============================[ <- Course -> ]============================== > ^#
+
+class CourseListView(generics.ListAPIView):
+    serializer_class = CourseSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['year','category']
+    search_fields = ['name']
+
+    def get_queryset(self):
+        # Base queryset
+        queryset = Course.objects.filter(is_center=False)
+
+        # Apply filters if the user is authenticated
+        if self.request.user.is_authenticated:
+            student = self.request.user.student
+            year = student.year
+            filters = {
+                'year': year,
+                'is_center': False if not student.is_center else True
+                }
+
+            queryset = Course.objects.filter(
+                Q(**filters) &
+                (Q(type_education=student.type_education) | Q(type_education_id=3))
+            )
+
+        return queryset
 
 
+    def get_serializer_context(self):
+        # Pass the request to the serializer context
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+
+class CourseDetailView(generics.RetrieveAPIView):
+    queryset = Course.objects.all() 
+    serializer_class = CourseSerializer
+    lookup_field = 'id' 
+
+    def get_queryset(self):
+        # Base queryset
+        queryset = Course.objects.filter(is_center=False)
+
+        # Apply filters if the user is authenticated
+        if self.request.user.is_authenticated:
+            student = self.request.user.student
+            year = student.year
+            filters = {
+                'year': year,
+                'is_center': False if not student.is_center else True
+                }
+
+            queryset = Course.objects.filter(
+                Q(**filters) &
+                (Q(type_education=student.type_education) | Q(type_education_id=3))
+            )
+
+        return queryset
+
+    def get_serializer_context(self):
+        # Pass the request to the serializer context
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+
+#* < ==============================[ <- Unit -> ]============================== > ^#
+
+class UnitListView(generics.ListAPIView):
+    serializer_class = UnitSerializer
+
+    def get_queryset(self):
+        course_id = self.kwargs['course_id']
+        return Unit.objects.filter(course_id=course_id,pending=False,parent=None).order_by("order")
+    
+
+#* < ==============================[ <- Unit Content -> ]============================== > ^#
+
+class UnitContent(APIView):
+    def get(self, request, unit_id, *args, **kwargs):
+        unit = get_object_or_404(Unit, id=unit_id)
+        content = self.get_content(unit)
+        return Response(content, status=status.HTTP_200_OK)
+
+    def get_content(self, unit):
+        videos = self.get_video(unit)
+        files = self.get_files(unit)
+        subunits = self.get_subunit(unit)
+        exams = self.get_exams(unit)
+        combined_content = self.combine_content(videos,files,subunits,exams)
+        return combined_content
+
+    def get_video(self, unit):
+        videos = unit.unit_videos.filter(pending=False)
+        return VideoSerializer(videos, many=True, context={'request': self.request}).data
+
+    def get_files(self,unit):
+        files = unit.unit_files.filter(pending=False)
+        return FileSerializer(files, many=True, context={'request': self.request}).data
+    
+    def get_exams(self, unit):
+        exams = unit.exams.filter(is_active=True)
+        return ExamSerializer(exams, many=True, context={'request': self.request}).data
+    
+    def get_subunit(self, unit):
+        subunits = unit.subunits.filter(pending=False)
+        return SubunitSerializer(subunits, many=True, context={'request': self.request}).data
+
+
+    def combine_content(self, videos, files, subunits, exams):
+        combined_content = sorted(
+            [{'content_type': 'video', **video} for video in videos] +
+            [{'content_type': 'file', **file} for file in files] +
+            [{'content_type': 'subunit', **subunit} for subunit in subunits] +
+            [{'content_type': 'exam', **exam} for exam in exams],
+            key=lambda x: x.get('order', 0)
+        )
+        return combined_content
+    
 

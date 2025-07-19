@@ -1,17 +1,21 @@
+import random
+import re
+import requests
 import uuid
-from django.db import models
 from django.core.validators import FileExtensionValidator
 from django.core.files.base import ContentFile
-from PIL import Image
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db import models
+from student.models import Student , Year,TypeEducation
 from io import BytesIO
+from PIL import Image
 from teacher.models import Teacher
-from student.models import Year,EducationType,DivisionType
 # Create your models here.
-
 
 class CourseCategory(models.Model):
     name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
+    description = models.TextField()
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
     
@@ -20,33 +24,30 @@ class CourseCategory(models.Model):
     
 
 class Course(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE) 
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='courses')
     name = models.CharField(max_length=255)
     description = models.TextField()
-    price = models.PositiveIntegerField(default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     category = models.ForeignKey(CourseCategory, on_delete=models.SET_NULL,blank=True, null=True)
     discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     year = models.ForeignKey(Year, on_delete=models.CASCADE)
     cover = models.FileField(upload_to='covers', max_length=500,validators=[FileExtensionValidator(allowed_extensions=['png','jpg','jpeg','webp'])])
     promo_video = models.CharField(max_length=350,blank=True, null=True)
-    eduction_type = models.ForeignKey(EducationType, blank=True, null=True, on_delete=models.CASCADE)
+    type_education = models.ForeignKey(TypeEducation, blank=True, null=True, on_delete=models.CASCADE)
     time = models.IntegerField(default=0)
     free = models.BooleanField(default=False)
-    pending = models.BooleanField(default=True)
+    publisher_date = models.DateTimeField(blank=True, null=True)
+    pending = models.BooleanField(default=False)
+    can_buy = models.BooleanField(default=True)
     is_center = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
+    barcode = models.UUIDField(default=uuid.uuid4,unique=True,editable=False)
     updated  = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f'{self.name} | teacher : {self.teacher.name}'
-    
-    def get_discounted_price(self):
-        if self.discount > 0:
-            discount_amount = (self.price * self.discount) / 100
-            return max(0, self.price - discount_amount)
-        return self.price
 
+    def __str__(self):
+        return f'{self.name} | id : {self.id}'
+    
     def save(self, *args, **kwargs):
         # Only convert to WebP if the cover is not in the WebP format
         if self.cover and not self.cover.name.endswith('.webp'):
@@ -74,28 +75,25 @@ class Course(models.Model):
 
 class Unit(models.Model):
     name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    price = models.PositiveIntegerField(default=0)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='units')
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    free = models.BooleanField(default=False)
-    pending = models.BooleanField(default=True)
-    parent = models.ForeignKey('self',on_delete=models.CASCADE,null=True,blank=True,related_name='sub_units')
-    order = models.IntegerField(default=1) 
-    updated  = models.DateTimeField(auto_now=True)
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='subunits')
+    order = models.PositiveIntegerField(default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2,blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    publisher_date = models.DateTimeField(blank=True, null=True)
+    pending = models.BooleanField(default=False)
+    updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order']
 
     def __str__(self):
         if self.parent:
-            return f"{self.parent} > {self.name}"
-        return self.name
-
-    def get_discounted_price(self):
-        if self.discount > 0:
-            discount_amount = (self.price * self.discount) / 100
-            return max(0, self.price - discount_amount)
-        return self.price
+            return f"Subunit: {self.name} (Parent: {self.parent.name})"
+        return f"Unit: {self.name}"
     
+
 #*============================>Unit Content<============================#*
 
 class StreamType(models.TextChoices):
@@ -105,6 +103,7 @@ class StreamType(models.TextChoices):
     YOUTUBE_SHOW = "youtube_show", "youtube show"
     VDOCIPHER = "vdocipher","vdocipher",
     VIMEO = "vimeo","vimeo",
+
 
 class Video(models.Model):
     name = models.CharField(max_length=250)
@@ -156,4 +155,35 @@ class File(models.Model):
 
     def __str__(self):
         return f'{self.name} - {self.unit.name}'
+    
+
+#*============================>CODES<============================#*
+
+class CourseCode(models.Model):
+    title = models.CharField(max_length=50,blank=True, null=True)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,blank=True, null=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE,blank=True, null=True)
+    available = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    code = models.CharField(max_length=11, unique=True,blank=True, null=True)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.code:
+            self.code = self.generate_code()
+        super().save(*args, **kwargs)
+
+
+
+class VideoCode(models.Model):
+    title = models.CharField(max_length=50,blank=True, null=True)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE,blank=True, null=True)
+    video = models.ForeignKey(Video, on_delete=models.CASCADE,blank=True, null=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE,blank=True, null=True)
+    available = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    code = models.CharField(max_length=11, unique=True,blank=True, null=True)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
     

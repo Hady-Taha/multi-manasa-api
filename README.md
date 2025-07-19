@@ -1,2 +1,1 @@
-# multi-manasa-api
-multi-manasa-api
+# manasa-api-v2

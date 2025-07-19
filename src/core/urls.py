@@ -22,10 +22,19 @@ from django.views.generic.base import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('student/', include("student.urls")),
-    path('teacher/',include("teacher.urls")),
+    path('dashboard/',include("dashboard.urls")),
+    path('student/',include("student.urls")),
     path('course/',include("course.urls")),
-    
+    path('exams/', include(("exam.urls"), namespace="exam")),
+    path('invoice/',include("invoice.urls")),
+    path('subscription/',include("subscription.urls")),
+    path('view/',include("view.urls")),
+    path('mobile-app/',include("mobile_app.urls")),
+    path('info/',include("info.urls")),
+    path('parent/',include("parent.urls")),
+    path('notification/',include("notification.urls")),
+    path('center/', include("desktop_app.urls")),
+    path('teacher/', include("teacher.urls")),
 ]
 
 

@@ -15,5 +15,5 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
 # Specify the schedule filename explicitly
-app.conf.beat_schedule_filename = '/home/easytech/multi-manasa-api/src/celerybeat-schedule'
+app.conf.beat_schedule_filename = 'celerybeat-schedule'
 

@@ -22,12 +22,26 @@ class CustomDjangoModelPermissions(DjangoModelPermissions):
         'DELETE': ['%(app_label)s.delete_%(model_name)s'],
     }
 
+    def has_permission(self, request, view):
+        user = request.user
+        if (
+            user and 
+            user.is_authenticated and 
+            hasattr(user, 'staff') and 
+            user.staff.active
+        ):
+            return super().has_permission(request, view)
+        return False
+
+
+
+
+class IsSuperUser(BasePermission):
+    def has_permission(self, request, view):
+        return request.user and request.user.is_authenticated and request.user.is_superuser
 
 
 class IsTeacher(BasePermission):
-    """
-    Allows access only to users who are teachers.
-    """
     def has_permission(self, request, view):
         if not hasattr(request.user, 'teacher'):
             raise PermissionDenied("This user is not a teacher.")

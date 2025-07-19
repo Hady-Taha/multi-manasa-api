@@ -15,9 +15,11 @@ djangorestframework
 djangorestframework-api-key
 djangorestframework-simplejwt
 django-cors-headers
+django-celery-beat
 django-redis
 cryptography
 user-agents
 PyMuPDF
-google-generativeai
 pyfcm
+firebase-admin
+#google-generativeai
