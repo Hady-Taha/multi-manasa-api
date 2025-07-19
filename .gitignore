@@ -141,3 +141,5 @@ static/
 .aws/
 
 *.env
+
+firebase_key.json
