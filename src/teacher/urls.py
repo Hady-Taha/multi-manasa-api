@@ -14,7 +14,7 @@ urlpatterns = [
     path('course/list/simple/', views.TeacherListCourseSimpleView.as_view(), name='teacher-course-simple-list'),
     path('course/create/', views.TeacherCreateCourseView.as_view(), name='teacher-create-course'),
     path('course/update/<int:id>/', views.TeacherUpdateCourseView.as_view(), name='teacher-update-course'),
-    path('course/detail/<int:id>/', views.TeacherDetailCourseView.as_view(), name='teacher-detail-course'),
+    path('course/details/<int:id>/', views.TeacherDetailCourseView.as_view(), name='teacher-detail-course'),
     path('course/delete/<int:id>/', views.TeacherDeleteCourseView.as_view(), name='teacher-delete-course'),
     
     #unit
@@ -38,6 +38,12 @@ urlpatterns = [
     
     #* < ==============================[ <- Unit Content -> ]============================== > ^#
     path('unit/content/<int:unit_id>/', views.UnitContentView.as_view(), name='teacher-unit-content'),
+    
+    #* < ==============================[ <- Subscription -> ]============================== > ^#
+    path('subscription/list/', views.TeacherCourseSubscriptionList.as_view(), name='course_subscription_list'),
+    path('subscription/cancel/', views.TeacherCancelSubscription.as_view(), name='cancel-subscription'),
+    #path("subscription/renew/", views.TeacherRenewSubscription.as_view(), name="RenewSubscription"),
+
     
     #* < ==============================[ <- Student -> ]============================== > ^#
     path('student/list/', views.TeacherListStudentView.as_view(), name='teacher-student-list'),

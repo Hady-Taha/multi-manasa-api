@@ -24,6 +24,7 @@ from .models import *
 from .serializers.profile.profile import *
 from .serializers.course.course import *
 from .serializers.student.student import*
+from .serializers.subscription.subscription import *
 
 #* < ==============================[ <- Authentication -> ]============================== > ^#
 
@@ -275,7 +276,8 @@ class TeacherDeleteVideoView(generics.DestroyAPIView):
         return video
 
 
-# File 
+#* File 
+
 #list
 class TeacherListFileView(generics.ListAPIView):
     serializer_class = TeacherListFileSerializer
@@ -372,6 +374,68 @@ class UnitContentView(APIView):
         return combined_content
     
 
+#* < ==============================[ <- Subscription -> ]============================== > ^#
+
+class TeacherCourseSubscriptionList(generics.ListAPIView):
+    serializer_class = TeacherListStudentCourseSubscription
+    permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    
+    search_fields = [
+        'student__name',
+        'student__user__username',
+        'course__name',
+        'invoice__sequence',
+        ]
+
+    filterset_fields = [
+            'student__year',
+            'student',
+            'course',
+            'active',
+            'student__government'
+        ]
+    
+    def get_queryset(self):
+        return CourseSubscription.objects.filter(course__teacher=self.request.user.teacher)
+
+
+class TeacherCancelSubscription(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def post(self, request, *args, **kwargs):
+        subscription_id = request.data.get('subscription_id')
+        subscription = get_object_or_404(CourseSubscription, id=subscription_id, course__teacher=request.user.teacher)
+
+        if not subscription.active:
+            raise PermissionDenied("This subscription is already inactive.")
+
+        # Cancel the subscription
+        subscription.active = False
+        subscription.save()
+
+        return Response({"message": "Subscription cancelled successfully."}, status=status.HTTP_200_OK)
+
+
+
+class TeacherRenewSubscription(APIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def post(self, request, *args, **kwargs):
+        subscription_id = request.data.get('subscription_id')
+        subscription = get_object_or_404(CourseSubscription, id=subscription_id, course__teacher=request.user.teacher)
+
+        if subscription.active:
+            raise PermissionDenied("This subscription is already active.")
+
+        # Renew the subscription
+        subscription.active = True
+        subscription.save()
+
+        return Response({"message": "Subscription renewed successfully."}, status=status.HTTP_200_OK)
+
+
+
 #* < ==============================[ <- Student -> ]============================== > ^#
 
 class TeacherListStudentView(generics.ListAPIView):
@@ -383,8 +447,6 @@ class TeacherListStudentView(generics.ListAPIView):
             coursesubscription__course__teacher=self.request.user.teacher
         ).distinct()
         
-
-
 
         
 class TeacherCenterStudentSignUpView(APIView):
