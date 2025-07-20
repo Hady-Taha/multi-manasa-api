@@ -13,6 +13,8 @@ from rest_framework_simplejwt.tokens import AccessToken,RefreshToken
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.exceptions import  NotFound
 from rest_framework import generics
+from rest_framework.filters import SearchFilter,OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 # FILES
 from core.permissions import IsTeacher
 from exam.serializers import ExamSerializer
@@ -113,6 +115,19 @@ class TeacherCourseCategoryView(generics.ListAPIView):
 class TeacherListCourseView(generics.ListAPIView):
     serializer_class = TeacherListCourseSerializer
     permission_classes = [IsAuthenticated,IsTeacher]
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    filterset_fields = [
+        'id',
+        'year',
+        'pending',
+        'is_center',
+        'category',
+        'can_buy',
+        'created',
+        'type_education',
+        ]
+
+    search_fields = ['name','description',]
     
     def get_queryset(self):
         return Course.objects.filter(teacher=self.request.user.teacher)
