@@ -6,15 +6,28 @@ from teacher.models import *
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
     user__username = serializers.CharField(source="user.username")
+    
     class Meta:
         model = Teacher
         fields = [
             'user__username',
             'name',
+            'category',
             'government',
             'active',
         ]
-        
+
+
+class TeacherCourseCategorySerializer(serializers.ModelSerializer):
+    course_category_id = serializers.IntegerField(source='course_category.id', read_only=True)
+    course_category_name = serializers.CharField(source='course_category.name', read_only=True)
+    class Meta:
+        model = TeacherCourseCategory
+        fields = [
+            'course_category_id',
+            'course_category_name',
+        ]
+
 #* < ==============================[ <- Auth [Serializers]  -> ]============================== > ^#
 
 

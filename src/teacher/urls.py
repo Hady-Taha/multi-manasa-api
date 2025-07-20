@@ -6,6 +6,7 @@ urlpatterns = [
     path("sign-up/", views.TeacherSignUpView.as_view(), name="student_sign_up"),
     #* < ==============================[ <- Profile -> ]============================== > ^#
     path("profile/", views.TeacherProfileView.as_view(), name="student_profile"),
+    path("course-category/list/", views.TeacherCourseCategoryView.as_view(), name="student_course_category"),
     #* < ==============================[ <- Course -> ]============================== > ^#
     
     #course

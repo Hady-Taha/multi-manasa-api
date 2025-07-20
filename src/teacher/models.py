@@ -15,6 +15,18 @@ class Teacher(models.Model):
         return f'{self.name} | {self.id}'
     
 
+
+class TeacherCourseCategory(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    course_category = models.ForeignKey('course.CourseCategory', related_name='teacher_course_categories', on_delete=models.CASCADE)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.course_category.name} | {self.teacher.name}'
+
+
+
 class TeacherCenterStudentCode(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
     student = models.ForeignKey(Student, on_delete=models.CASCADE, blank=True, null=True)
@@ -25,3 +37,4 @@ class TeacherCenterStudentCode(models.Model):
 
     def __str__(self):
         return f'{self.teacher.name} | | {self.code} | {self.is_available} '
+    

@@ -98,6 +98,17 @@ class TeacherProfileView(APIView):
         return Response(res_data, status=status.HTTP_200_OK)
     
 
+
+class TeacherCourseCategoryView(generics.ListAPIView):
+    serializer_class = TeacherCourseCategorySerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    pagination_class = None
+    
+    def get_queryset(self):
+        return TeacherCourseCategory.objects.filter(teacher=self.request.user.teacher).select_related('course_category')
+
+
+
 #* < ==============================[ <- Course -> ]============================== > ^#
 
 #* Course
