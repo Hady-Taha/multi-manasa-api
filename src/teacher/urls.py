@@ -43,6 +43,8 @@ urlpatterns = [
     
     #* < ==============================[ <- Unit Content -> ]============================== > ^#
     path('unit/content/<int:unit_id>/', views.UnitContentView.as_view(), name='teacher-unit-content'),
+    
+    
     #* < ==============================[ <- Invoice -> ]============================== > ^#
     path('invoice/list/', views.TeacherInvoiceList.as_view(), name='teacher-invoice-list'),
 

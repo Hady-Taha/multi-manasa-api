@@ -13,6 +13,7 @@ class TeacherStudentSerializer(serializers.ModelSerializer):
             "user__username",
             "parent_phone",
             "type_education_name",
+            'type_education',
             "division",
             "government",
             'year_name',

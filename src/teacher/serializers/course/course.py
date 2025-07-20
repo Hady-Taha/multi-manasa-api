@@ -87,7 +87,7 @@ class TeacherSubunitSerializer(serializers.ModelSerializer):
 
 
 class TeacherListUnitSerializer(serializers.ModelSerializer):
-
+    subunits = TeacherSubunitSerializer(many=True, read_only=True)
     class Meta:
         model = Unit
         fields = [
@@ -95,7 +95,8 @@ class TeacherListUnitSerializer(serializers.ModelSerializer):
             'name', 
             'course', 
             'description',
-            'parent', 
+            'parent',
+            'subunits', 
             'order',
             'pending',
             'created',
