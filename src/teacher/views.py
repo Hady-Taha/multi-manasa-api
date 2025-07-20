@@ -277,6 +277,40 @@ class TeacherDeleteVideoView(generics.DestroyAPIView):
         return video
 
 
+#video files
+#list
+class TeacherVideoFileListView(generics.ListAPIView):
+    serializer_class = TeacherFileVideoSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    
+    def get_queryset(self):
+        video_id = self.kwargs['video_id']
+        video = get_object_or_404(Video, id=video_id, unit__course__teacher=self.request.user.teacher)
+        return video.video_files.all()
+
+
+#create
+class TeacherVideoFileCreateView(generics.CreateAPIView):
+    serializer_class = TeacherFileVideoSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    
+    def perform_create(self, serializer):
+        video_id = self.kwargs['video_id']
+        video = get_object_or_404(Video, id=video_id, unit__course__teacher=self.request.user.teacher)
+        serializer.save(video=video)
+
+#delete
+class TeacherVideoFileDeleteView(generics.DestroyAPIView):
+    serializer_class = TeacherFileVideoSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    lookup_field = 'file_id'
+    
+    def get_object(self):
+        video_file = get_object_or_404(VideoFile, id=self.kwargs['file_id'], video__unit__course__teacher=self.request.user.teacher)
+        return video_file
+
+
+
 #* File 
 
 #list

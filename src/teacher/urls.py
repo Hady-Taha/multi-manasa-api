@@ -30,6 +30,11 @@ urlpatterns = [
     path('unit/video/update/<int:id>/', views.TeacherUpdateVideoView.as_view(), name='teacher-update-video'),
     path('unit/video/delete/<int:id>/', views.TeacherDeleteVideoView.as_view(), name='teacher-delete-video'),
     
+    #Video File
+    path('video/file/list/<int:video_id>/', views.TeacherVideoFileListView.as_view(), name='video-file-list'),
+    path('video/file/create/<int:video_id>/', views.TeacherVideoFileCreateView.as_view(), name='video-file-create'),
+    path('video/file/delete/<int:file_id>/', views.TeacherVideoFileDeleteView.as_view(), name='video-file-delete'),
+    
     #File
     path('unit/file/list/<int:unit_id>/', views.TeacherListFileView.as_view(), name='teacher-file-list'),
     path('unit/file/create/<int:unit_id>/', views.TeacherCreateFileView.as_view(), name='teacher-create-file'),
