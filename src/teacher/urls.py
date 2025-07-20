@@ -38,11 +38,13 @@ urlpatterns = [
     
     #* < ==============================[ <- Unit Content -> ]============================== > ^#
     path('unit/content/<int:unit_id>/', views.UnitContentView.as_view(), name='teacher-unit-content'),
-    
+    #* < ==============================[ <- Invoice -> ]============================== > ^#
+    path('invoice/list/', views.TeacherInvoiceList.as_view(), name='teacher-invoice-list'),
+
     #* < ==============================[ <- Subscription -> ]============================== > ^#
     path('subscription/list/', views.TeacherCourseSubscriptionList.as_view(), name='course_subscription_list'),
     path('subscription/cancel/', views.TeacherCancelSubscription.as_view(), name='cancel-subscription'),
-    #path("subscription/renew/", views.TeacherRenewSubscription.as_view(), name="RenewSubscription"),
+    path("subscription/renew/", views.TeacherRenewSubscription.as_view(), name="renew-subscription"),
 
     
     #* < ==============================[ <- Student -> ]============================== > ^#

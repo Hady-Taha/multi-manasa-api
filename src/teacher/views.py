@@ -25,6 +25,7 @@ from .serializers.profile.profile import *
 from .serializers.course.course import *
 from .serializers.student.student import*
 from .serializers.subscription.subscription import *
+from .serializers.invoice.Invoice import *
 
 #* < ==============================[ <- Authentication -> ]============================== > ^#
 
@@ -373,6 +374,24 @@ class UnitContentView(APIView):
         )
         return combined_content
     
+
+#* < ==============================[ <- Invoice -> ]============================== > ^#
+
+class TeacherInvoiceList(generics.ListAPIView):
+    serializer_class = ListInvoiceSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+
+    search_fields = [
+        'student__name',
+        'student__user__username',
+        'course__name',
+        'invoice__sequence',
+    ]
+
+    def get_queryset(self):
+        return Invoice.objects.filter(teacher=self.request.user.teacher)
+
 
 #* < ==============================[ <- Subscription -> ]============================== > ^#
 
