@@ -353,4 +353,3 @@ class TeacherCenterStudentSignUpView(APIView):
         get_code.save()
         return Response(status=status.HTTP_200_OK)
 
-
