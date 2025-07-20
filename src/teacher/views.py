@@ -98,14 +98,11 @@ class TeacherProfileView(APIView):
         return Response(res_data, status=status.HTTP_200_OK)
     
 
-
 class TeacherCourseCategoryView(generics.ListAPIView):
-    serializer_class = TeacherCourseCategorySerializer
-    permission_classes = [IsAuthenticated, IsTeacher]
-    pagination_class = None
-    
-    def get_queryset(self):
-        return TeacherCourseCategory.objects.filter(teacher=self.request.user.teacher).select_related('course_category')
+    permission_classes = [IsAuthenticated]
+    def get(self,request,*args, ** kwargs):
+        qr = TeacherCourseCategory.objects.filter(teacher=request.user.teacher).values("course_category__id",'course_category__name')
+        return Response(qr,status=status.HTTP_200_OK)
 
 
 
@@ -119,6 +116,19 @@ class TeacherListCourseView(generics.ListAPIView):
     
     def get_queryset(self):
         return Course.objects.filter(teacher=self.request.user.teacher)
+
+#simple list
+class TeacherListCourseSimpleView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        year_id = request.query_params.get('year_id')
+        qr = Course.objects.filter(teacher=self.request.user.teacher).values("id", "name",'price')
+
+        if year_id:
+            qr = qr.filter(year_id=year_id)
+
+        return Response(qr, status=status.HTTP_200_OK)
 
 #create
 class TeacherCreateCourseView(generics.CreateAPIView):
@@ -168,6 +178,13 @@ class TeacherListUnitView(generics.ListAPIView):
     def get_queryset(self):
         course_id = self.kwargs['course_id']
         return Unit.objects.filter(course__teacher=self.request.user.teacher, course_id=course_id,parent=None)
+
+#simple list
+class TeacherUnitListSimple(APIView):
+    permission_classes = [IsAuthenticated]
+    def get(self,request,course_id,*args, ** kwargs):
+        qr = Unit.objects.filter(course_id=course_id,course__teacher=request.user.teacher).values("id",'name')
+        return Response(qr,status=status.HTTP_200_OK)
 
 #create
 class TeacherCreateUnitView(generics.CreateAPIView):

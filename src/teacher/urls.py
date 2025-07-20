@@ -6,11 +6,12 @@ urlpatterns = [
     path("sign-up/", views.TeacherSignUpView.as_view(), name="student_sign_up"),
     #* < ==============================[ <- Profile -> ]============================== > ^#
     path("profile/", views.TeacherProfileView.as_view(), name="student_profile"),
-    path("course-category/list/", views.TeacherCourseCategoryView.as_view(), name="student_course_category"),
+    path("course-category/list/simple/", views.TeacherCourseCategoryView.as_view(), name="student_course_category"),
     #* < ==============================[ <- Course -> ]============================== > ^#
     
     #course
     path('course/list/', views.TeacherListCourseView.as_view(), name='teacher-course-list'),
+    path('course/list/simple/', views.TeacherListCourseSimpleView.as_view(), name='teacher-course-simple-list'),
     path('course/create/', views.TeacherCreateCourseView.as_view(), name='teacher-create-course'),
     path('course/update/<int:id>/', views.TeacherUpdateCourseView.as_view(), name='teacher-update-course'),
     path('course/detail/<int:id>/', views.TeacherDetailCourseView.as_view(), name='teacher-detail-course'),
@@ -21,6 +22,7 @@ urlpatterns = [
     path('course/unit/create/<int:course_id>/', views.TeacherCreateUnitView.as_view(), name='teacher-create-unit'),
     path('course/unit/update/<int:id>/', views.TeacherUpdateUnitView.as_view(), name='teacher-update-unit'),
     path('course/unit/delete/<int:id>/', views.TeacherDeleteUnitView.as_view(), name='teacher-delete-unit'),
+    path('course/unit/list/simple/<int:course_id>/', views.TeacherUnitListSimple.as_view(), name='extra-unit-list'),
     
     #video
     path('unit/video/list/<int:unit_id>/', views.TeacherListVideoView.as_view(), name='teacher-video-list'),

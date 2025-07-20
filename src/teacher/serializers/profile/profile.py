@@ -18,15 +18,6 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         ]
 
 
-class TeacherCourseCategorySerializer(serializers.ModelSerializer):
-    course_category_id = serializers.IntegerField(source='course_category.id', read_only=True)
-    course_category_name = serializers.CharField(source='course_category.name', read_only=True)
-    class Meta:
-        model = TeacherCourseCategory
-        fields = [
-            'course_category_id',
-            'course_category_name',
-        ]
 
 #* < ==============================[ <- Auth [Serializers]  -> ]============================== > ^#
 
