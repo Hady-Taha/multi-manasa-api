@@ -93,6 +93,5 @@ class StudentFilter(django_filters.FilterSet):
             'block': ['exact'],
             'created': ['exact'],
             'government': ['exact'],
-            'teacher_id': ['exact'],
         }
 

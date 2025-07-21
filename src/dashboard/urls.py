@@ -32,8 +32,13 @@ urlpatterns = [
     path('course/category/create/', views.CourseCategoryCreateView.as_view(), name='course-category-create'),
     path('course/category/update/<int:id>/', views.CourseCategoryUpdateView.as_view(), name='course-category-update'),
     path('course/category/delete/<int:id>/', views.CourseCategoryDeleteView.as_view(), name='course-category-delete'),
-
-
+    
+    #* < ==============================[ <- Teacher -> ]============================== > ^#
+    path('teacher/list/', views.TeacherListView.as_view(), name="TeacherListView"),
+    path('teacher/create/',views.TeacherCreateView.as_view(),name="Create-Teacher"),
+    path('teacher/update/<int:id>/', views.TeacherUpdateView.as_view(), name="Update-Teacher"),
+    path('teacher/delete/<int:id>/', views.TeacherDeleteView.as_view(), name="Delete-Teacher"),
+    
     #* < ==============================[ <- Course -> ]============================== > ^#
     path('course/list/', views.CourseListView.as_view(), name='course-list'),
     path('course/details/<int:id>/', views.CourseDetailView.as_view(), name='course-details'),
@@ -87,8 +92,8 @@ urlpatterns = [
     path('codes/video/list/', views.CodeVideoListView.as_view(), name='course-code-list'),
 
     #Student
-    path('codes/student/generate/', views.GenerateStudentCenterCodes.as_view(), name='generate-student-codes'),
-    path('codes/student/list/', views.StudentCodeListView.as_view(), name='list-student-codes'),
+    path('codes/student/generate/', views.GenerateTeacherCenterStudentCodes.as_view(), name='generate-student-codes'),
+    path('codes/student/list/', views.StudentTeacherCenterCodesListView.as_view(), name='list-student-codes'),
 
     
     #* < ==============================[ <- Invoice -> ]============================== > ^#

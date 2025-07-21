@@ -68,7 +68,7 @@ from .serializers.view.video_views import *
 from .serializers.desktop_app.desktop_serializers import *
 from .serializers.permissions.permissions import *
 from .serializers.analysis.analysis import *
-
+from .serializers.teacher.teacher import *
 
 #ap:Student
 #* < ==============================[ <- Student -> ]============================== > ^#
@@ -433,6 +433,71 @@ class AssignGroupToUserView(APIView):
             'groups': [group.name for group in groups]
         }, status=status.HTTP_200_OK)
     
+
+
+
+#ap:Teacher
+#* < ==============================[ <- Teacher -> ]============================== > ^#
+
+class TeacherListView(generics.ListAPIView):
+    queryset = Teacher.objects.all()
+    serializer_class = TeacherListSerializer
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = [
+        'id',
+        'name',
+        'government',
+        'active',
+        'teacher_course_categories__course_category',
+    ]
+    search_fields = ['name','user__username']
+
+
+class TeacherCreateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    queryset = Teacher.objects.all()
+    
+    def post(self, request):
+
+        serializer = TeacherCreateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            # Save the valid data, creating a new teacher instance
+            teacher = serializer.save()
+
+            # Generate an access token for the associated user
+            access_token = AccessToken.for_user(teacher.user)
+
+            # Save access_token in model teacher
+            teacher.jwt_token = f'Bearer {access_token}'
+            teacher.save()
+
+            # Return the access token in the response
+            context = {
+                "access_token": f'{settings.SIMPLE_JWT["AUTH_HEADER_TYPES"]} {access_token}'
+            }
+
+            return Response(context,status=status.HTTP_200_OK)
+        
+        # If validation fails, return the errors in the response
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TeacherUpdateView(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    queryset = Teacher.objects.all()
+    serializer_class = TeacherUpdateSerializer
+    lookup_field = 'id'
+
+class TeacherDeleteView(generics.DestroyAPIView):
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    queryset = Teacher.objects.all()
+    serializer_class = TeacherListSerializer
+    lookup_field = 'id'
+    
+
 
 #ap:Course
 #* < ==============================[ <- CourseCategory -> ]============================== > ^#
@@ -1053,43 +1118,46 @@ class CodeVideoListView(generics.ListAPIView):
 
 
 #* Student Code
-class GenerateStudentCenterCodes(APIView):
+class GenerateTeacherCenterStudentCodes(APIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-    queryset = StudentCenterCode.objects.all()
 
     def post(self, request, *args, **kwargs):
         quantity = int(request.data.get("quantity", 0))
+        teacher = get_object_or_404(Teacher, id=request.data.get("teacher"))
+
         if quantity <= 0:
             return Response({"detail": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST)
 
         existing_codes = set(
-            StudentCenterCode.objects.values_list("code", flat=True)
+            TeacherCenterStudentCode.objects.values_list("code", flat=True)
         )
         codes_set = set()
         codes_to_create = []
-        
+
         # Generate unique numeric codes
         while len(codes_set) < quantity:
             number = '0' + ''.join(random.choices('0123456789', k=10))
             if number not in existing_codes and number not in codes_set:
                 codes_set.add(number)
-                codes_to_create.append(StudentCenterCode(code=number))
+                codes_to_create.append(
+                    TeacherCenterStudentCode(teacher=teacher, code=number)
+                )
 
         # Bulk insert
         with transaction.atomic():
-            StudentCenterCode.objects.bulk_create(codes_to_create, batch_size=10000)
+            TeacherCenterStudentCode.objects.bulk_create(codes_to_create, batch_size=10000)
 
         return Response({"codes": list(codes_set)}, status=status.HTTP_201_CREATED)
 
 
-class StudentCodeListView(generics.ListAPIView):
+class StudentTeacherCenterCodesListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-    queryset = StudentCenterCode.objects.all().order_by("-created")
-    serializer_class = StudentCenterCodeSerializer
+    queryset = TeacherCenterStudentCode.objects.all().order_by("-created")
+    serializer_class = TeacherCenterStudentCodeSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = [
         'id',
-        'available'
+        'available',
         ]
     search_fields = [
         'student__user__username',
