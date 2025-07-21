@@ -38,7 +38,6 @@ class TeacherSimpleListView(generics.ListAPIView):
 
 
 
-
 #* < ==============================[ <- Categories -> ]============================== > ^#
 
 class CourseCategoryListView(generics.ListAPIView):
@@ -176,4 +175,3 @@ class UnitContent(APIView):
         )
         return combined_content
     
-
