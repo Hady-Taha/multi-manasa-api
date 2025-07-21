@@ -35,6 +35,8 @@ urlpatterns = [
     path('notification/',include("notification.urls")),
     path('center/', include("desktop_app.urls")),
     path('teacher/', include("teacher.urls")),
+    path('analysis/', include("analysis.urls")),
+    
 ]
 
 

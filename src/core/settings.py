@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'parent',
     'desktop_app',
     'teacher',
+    'analysis',
 ]
 
 MIDDLEWARE = [
