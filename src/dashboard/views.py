@@ -491,6 +491,7 @@ class TeacherUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = TeacherUpdateSerializer
     lookup_field = 'id'
 
+
 class TeacherDeleteView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Teacher.objects.all()
@@ -541,6 +542,7 @@ class CourseListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend,SearchFilter]
     
     filterset_fields = [
+        'teacher',
         'id',
         'year',
         'pending',
@@ -1033,12 +1035,17 @@ class CodeCourseGenerate(APIView):
             "codes": list(codes_set)
         }, status=status.HTTP_201_CREATED)
 
+
 class CodeCourseListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = CourseCode.objects.all().order_by("-created")
     serializer_class = CourseCodeSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['course','available']
+    filterset_fields = [
+        'course__teacher',
+        'course',
+        'available'
+        ]
     search_fields = ['title', 'code','student__user__username']
 
 
@@ -1120,7 +1127,8 @@ class CodeVideoListView(generics.ListAPIView):
 #* Student Code
 class GenerateTeacherCenterStudentCodes(APIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-
+    queryset = TeacherCenterStudentCode.objects.all()
+        
     def post(self, request, *args, **kwargs):
         quantity = int(request.data.get("quantity", 0))
         teacher = get_object_or_404(Teacher, id=request.data.get("teacher"))
@@ -1136,7 +1144,7 @@ class GenerateTeacherCenterStudentCodes(APIView):
 
         # Generate unique numeric codes
         while len(codes_set) < quantity:
-            number = '0' + ''.join(random.choices('0123456789', k=10))
+            number = '00' + ''.join(random.choices('0123456789', k=6))
             if number not in existing_codes and number not in codes_set:
                 codes_set.add(number)
                 codes_to_create.append(
@@ -1286,6 +1294,7 @@ class CourseSubscriptionList(generics.ListAPIView):
     filterset_fields = [
             'student__year',
             'student',
+            'course__teacher',
             'course',
             'active',
             'student__government'
