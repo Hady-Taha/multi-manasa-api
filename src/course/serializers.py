@@ -1,6 +1,28 @@
 from rest_framework import serializers
 from subscription.models import CourseSubscription,VideoSubscription
+from teacher.models import TeacherCourseCategory
 from .models import *
+
+#* < ==============================[ <- Teacher -> ]============================== > ^#
+
+class TeacherListSerializer(serializers.ModelSerializer):
+    course_categories = serializers.SerializerMethodField()
+    class Meta:
+        model = Teacher
+        fields = [
+            'id',
+            'user',
+            'name',
+            'photo',
+            'info',
+            'government',
+            'course_categories',
+        ]
+        
+    def get_course_categories(self, obj):
+        categories = TeacherCourseCategory.objects.filter(teacher=obj).values('course_category__id', 'course_category__name')
+        return categories
+
 
 #* < ==============================[ <- Category -> ]============================== > ^#
 
@@ -13,6 +35,7 @@ class CourseCategorySerializer(serializers.ModelSerializer):
 
 class CourseSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(source='teacher.name', read_only=True)
+    teacher_photo = serializers.ImageField(source='teacher.photo', read_only=True)
     year__name = serializers.CharField(source='year.name', read_only=True)
     discounted_price = serializers.SerializerMethodField()
     units_count = serializers.SerializerMethodField()
@@ -27,6 +50,7 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'teacher',
+            'teacher_photo',
             'teacher_name',
             'name',
             'description',

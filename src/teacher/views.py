@@ -101,12 +101,17 @@ class TeacherProfileView(APIView):
         res_data = TeacherProfileSerializer(teacher).data
         return Response(res_data, status=status.HTTP_200_OK)
     
+    
+
 
 class TeacherCourseCategoryView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     def get(self,request,*args, ** kwargs):
         qr = TeacherCourseCategory.objects.filter(teacher=request.user.teacher).values("course_category__id",'course_category__name')
         return Response(qr,status=status.HTTP_200_OK)
+
+
+
 
 
 

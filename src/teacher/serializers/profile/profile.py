@@ -10,6 +10,9 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
         fields = [
+            'id',
+            'photo',
+            'info',
             'user__username',
             'name',
             'category',

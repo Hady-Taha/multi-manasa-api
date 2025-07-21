@@ -13,9 +13,32 @@ from rest_framework.views import APIView
 from rest_framework import generics
 from exam.serializers import ExamSerializer
 from .models import CourseCategory,Course,Unit
-from .serializers import CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
+from .serializers import TeacherListSerializer,CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
+from teacher.models import Teacher
 
-# Create your views here.
+
+#* < ==============================[ <- Teacher -> ]============================== > ^#
+
+class TeacherListView(generics.ListAPIView):
+    serializer_class = TeacherListSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['name']
+    search_fields = ['name']
+
+    def get_queryset(self):
+        return Teacher.objects.filter(active=True)
+
+
+
+
+class TeacherSimpleListView(generics.ListAPIView):
+    def get(self,request,*args, ** kwargs):
+        qr = Teacher.objects.all().values("id",'name')
+        return Response(qr,status=status.HTTP_200_OK)
+
+
+
+
 #* < ==============================[ <- Categories -> ]============================== > ^#
 
 class CourseCategoryListView(generics.ListAPIView):
@@ -24,6 +47,12 @@ class CourseCategoryListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['name']
     search_fields = ['name']
+
+
+class CourseCategorySimpleListView(generics.ListAPIView):
+    def get(self,request,*args, ** kwargs):
+        qr = CourseCategory.objects.all().values("id",'name')
+        return Response(qr,status=status.HTTP_200_OK)
 
 
 #* < ==============================[ <- Course -> ]============================== > ^#

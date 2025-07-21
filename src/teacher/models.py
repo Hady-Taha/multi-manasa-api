@@ -6,6 +6,8 @@ from student.models import Year,Student
 class Teacher(models.Model):
     user = models.OneToOneField(User,on_delete=models.CASCADE)
     name = models.CharField(max_length=50)
+    photo = models.ImageField(upload_to='teacher_photos/', blank=True, null=True)
+    info = models.TextField(blank=True, null=True)
     government = models.CharField(max_length=100)
     jwt_token = models.CharField(max_length=1000, blank=True, null=True)
     active = models.BooleanField(default=False)

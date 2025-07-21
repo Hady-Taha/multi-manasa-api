@@ -7,8 +7,8 @@ urlpatterns = [
     #* < ==============================[ <- Profile -> ]============================== > ^#
     path("profile/", views.TeacherProfileView.as_view(), name="student_profile"),
     path("course-category/list/simple/", views.TeacherCourseCategoryView.as_view(), name="student_course_category"),
+
     #* < ==============================[ <- Course -> ]============================== > ^#
-    
     #course
     path('course/list/', views.TeacherListCourseView.as_view(), name='teacher-course-list'),
     path('course/list/simple/', views.TeacherListCourseSimpleView.as_view(), name='teacher-course-simple-list'),
@@ -57,4 +57,6 @@ urlpatterns = [
     #* < ==============================[ <- Student -> ]============================== > ^#
     path('student/list/', views.TeacherListStudentView.as_view(), name='teacher-student-list'),
     path('student/center/sign-up/code/', views.TeacherCenterStudentSignUpView.as_view(), name='teacher-center-student-sign-up'),
+
+
 ]
