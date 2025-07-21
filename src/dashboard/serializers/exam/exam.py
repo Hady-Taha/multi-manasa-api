@@ -121,7 +121,7 @@ class ExamSerializer(serializers.ModelSerializer):
 class QuestionCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = QuestionCategory
-        fields = ['id', 'title', 'year']
+        fields = ['id', 'title', 'course']
 
 class AnswerSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
@@ -150,6 +150,7 @@ class QuestionSerializer(serializers.ModelSerializer):
             'category',
             'video',
             'unit',
+            'course',
             'is_active',
             'answers',
             'question_type',
