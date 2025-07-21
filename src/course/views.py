@@ -22,7 +22,7 @@ from teacher.models import Teacher
 class TeacherListView(generics.ListAPIView):
     serializer_class = TeacherListSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['name']
+    filterset_fields = ['name','id']
     search_fields = ['name']
 
     def get_queryset(self):
