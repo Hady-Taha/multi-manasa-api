@@ -29,13 +29,10 @@ class TeacherListView(generics.ListAPIView):
         return Teacher.objects.filter(active=True)
 
 
-
-
 class TeacherSimpleListView(generics.ListAPIView):
     def get(self,request,*args, ** kwargs):
         qr = Teacher.objects.all().values("id",'name')
         return Response(qr,status=status.HTTP_200_OK)
-
 
 
 #* < ==============================[ <- Categories -> ]============================== > ^#

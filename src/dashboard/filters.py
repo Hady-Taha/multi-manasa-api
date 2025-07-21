@@ -5,6 +5,8 @@ from .models import RequestLog
 from view.models import ViewSession
 import django_filters
 import datetime
+from student.models import Student  
+
 
 class InvoiceFilter(django_filters.FilterSet):
     created = django_filters.DateFromToRangeFilter()
@@ -70,3 +72,27 @@ class ViewSessionFilterAnalysis(django_filters.FilterSet):
     class Meta:
         model = ViewSession
         fields = ['start_date', 'end_date']
+        
+
+
+#* Student
+class StudentFilter(django_filters.FilterSet):
+    teacher_id = django_filters.NumberFilter(
+        field_name='coursesubscription__course__teacher__id', lookup_expr='exact'
+    )
+
+    class Meta:
+        model = Student
+        fields = {
+            'id': ['exact'],
+            'year': ['exact'],
+            'is_center': ['exact'],
+            'type_education': ['exact'],
+            'division': ['exact'],
+            'active': ['exact'],
+            'block': ['exact'],
+            'created': ['exact'],
+            'government': ['exact'],
+            'teacher_id': ['exact'],
+        }
+

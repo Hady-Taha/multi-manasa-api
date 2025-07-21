@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from student.models import Student
-from subscription.models import CourseSubscription
+
 
 class TeacherStudentSerializer(serializers.ModelSerializer):
     user__username = serializers.CharField(source='user.username', read_only=True)
@@ -20,16 +20,4 @@ class TeacherStudentSerializer(serializers.ModelSerializer):
             'year_name',
             "year",
         ]
-
-
-
-
-
-
-
-
-
-
-
-
 

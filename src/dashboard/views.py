@@ -78,17 +78,7 @@ class StudentsListView(generics.ListAPIView):
     queryset = Student.objects.select_related('user', 'type_education', 'year').order_by("-created")
     serializer_class = StudentSerializer
     filter_backends = [DjangoFilterBackend,SearchFilter,OrderingFilter]
-    filterset_fields = [
-            'id',
-            'year',
-            'is_center',
-            'type_education',
-            'division',
-            'active',
-            'block',
-            'created',
-            'government',
-        ]
+    filterset_class = StudentFilter
 
     search_fields = [
         'name',
