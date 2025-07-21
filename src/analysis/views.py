@@ -35,24 +35,24 @@ from course.models import Course,CourseCategory
 from teacher.models import Teacher
 
 
-class HomeAnalysisView(APIView):
+class HomeCountsView(APIView):
     permission_classes = []
 
     def get(self, request, *args, **kwargs):
-        
         counts = {
             "total_courses": Course.objects.count(),
             "total_teachers": Teacher.objects.count(),
             "total_students": User.objects.filter(is_active=True).count(),
         }
-        
-        # Get the total teacher in course Category
+        return Response({"counts": counts}, status=status.HTTP_200_OK)
+
+class TeacherCategoryAnalysisView(APIView):
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
         teacher_in_category = CourseCategory.objects.annotate(
             total_teachers=Count('teachercoursecategory')
         ).values('name', 'total_teachers')
-        
-        context= {
-            "counts": counts,
-            "teacher_in_category": teacher_in_category
-        }
-        return Response(context, status=status.HTTP_200_OK)
+
+        return Response({"teacher_in_category": teacher_in_category}, status=status.HTTP_200_OK)
+    
