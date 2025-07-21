@@ -9,6 +9,7 @@ class TeacherStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
+            'id',
             "name",
             "user__username",
             "parent_phone",
