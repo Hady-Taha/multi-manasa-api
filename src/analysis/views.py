@@ -48,7 +48,7 @@ class HomeAnalysisView(APIView):
         
         # Get the total teacher in course Category
         teacher_in_category = CourseCategory.objects.annotate(
-            total_teachers=Count('course__teacher', distinct=True)
+            total_teachers=Count('teachercoursecategory')
         ).values('name', 'total_teachers')
         
         context= {
