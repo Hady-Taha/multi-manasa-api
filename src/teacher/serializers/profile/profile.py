@@ -6,7 +6,7 @@ from teacher.models import *
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
     user__username = serializers.CharField(source="user.username")
-    
+    course_categories = serializers.SerializerMethodField()
     class Meta:
         model = Teacher
         fields = [
@@ -15,10 +15,13 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'info',
             'user__username',
             'name',
-            'category',
             'government',
             'active',
+            'course_categories',
         ]
+    def get_course_categories(self, obj):
+        categories = TeacherCourseCategory.objects.filter(teacher=obj).values('course_category__id', 'course_category__name')
+        return categories
 
 
 
