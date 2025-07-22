@@ -221,7 +221,7 @@ urlpatterns = [
     path('temp-exam-allowed-times/', views.CreateOrUpdateTempExamAllowedTimes.as_view(), name='temp-exam-allowed-times'),
     #^ < ==============================[ <- video quiz -> ]============================== > ^#
     path('video-quizzes/', views.VideoQuizListCreateAPIView.as_view(), name='videoquiz-list-create'),
-    path('video-quizzes/<int:pk>/', views.VideoQuizRetrieveUpdateDestroyAPIView.as_view(), name='videoquiz-detail'),\
+    path('video-quizzes/<int:pk>/', views.VideoQuizRetrieveUpdateDestroyAPIView.as_view(), name='videoquiz-detail'),
 
 
 ]
