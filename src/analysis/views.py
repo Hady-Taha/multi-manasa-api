@@ -43,6 +43,7 @@ class HomeCountsView(APIView):
             "total_courses": Course.objects.count(),
             "total_teachers": Teacher.objects.count(),
             "total_students": User.objects.filter(is_active=True).count(),
+            "total_categories": CourseCategory.objects.count(),
         }
         return Response({"counts": counts}, status=status.HTTP_200_OK)
 
@@ -52,7 +53,6 @@ class TeacherCategoryAnalysisView(APIView):
     def get(self, request, *args, **kwargs):
         teacher_in_category = CourseCategory.objects.annotate(
             total_teachers=Count('teachercoursecategory')
-        ).values('name', 'total_teachers')
+        ).filter(total_teachers__gt=0).values('name', 'total_teachers')
 
         return Response({"teacher_in_category": teacher_in_category}, status=status.HTTP_200_OK)
-    
