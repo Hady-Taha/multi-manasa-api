@@ -1389,6 +1389,7 @@ class VideoViewList(generics.ListAPIView):
         'video__unit__course',
     ]
 
+
 class UpdateStudentView(APIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = VideoView.objects.all()

@@ -95,3 +95,10 @@ class StudentFilter(django_filters.FilterSet):
             'government': ['exact'],
         }
 
+    @property
+    def qs(self):
+        # Apply base filtering
+        parent_qs = super().qs
+        # Ensure we get distinct Student records based on teacher
+        return parent_qs.distinct('coursesubscription__course__teacher__id')
+
