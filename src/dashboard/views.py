@@ -1194,6 +1194,7 @@ class InvoiceListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = InvoiceFilter
     search_fields = [
+        'teacher',
         'student__user__username', 
         'sequence',
         'item_barcode',
