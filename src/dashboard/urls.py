@@ -36,6 +36,7 @@ urlpatterns = [
     
     #* < ==============================[ <- Teacher -> ]============================== > ^#
     path('teacher/list/', views.TeacherListView.as_view(), name="TeacherListView"),
+    path("teacher/list/simple/", views.TeacherSimpleListView.as_view(), name="student_course_category"),
     path("teacher/rest-password/<str:username>/",views.UserRestPasswordView.as_view(), name="UserRestPasswordView"),
     path('teacher/create/',views.TeacherCreateView.as_view(),name="Create-Teacher"),
     path('teacher/update/<int:id>/', views.TeacherUpdateView.as_view(), name="Update-Teacher"),

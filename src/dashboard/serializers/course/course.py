@@ -65,6 +65,7 @@ class CreateCourseSerializers(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields=[
+            'teacher',
             'name',
             'can_buy',
             'description',

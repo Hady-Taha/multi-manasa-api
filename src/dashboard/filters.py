@@ -77,28 +77,25 @@ class ViewSessionFilterAnalysis(django_filters.FilterSet):
 
 #* Student
 class StudentFilter(django_filters.FilterSet):
-    teacher_id = django_filters.NumberFilter(
-        field_name='coursesubscription__course__teacher__id', lookup_expr='exact'
-    )
+    teacher_id = django_filters.NumberFilter(method='filter_by_teacher')
 
     class Meta:
         model = Student
-        fields = {
-            'id': ['exact'],
-            'year': ['exact'],
-            'is_center': ['exact'],
-            'type_education': ['exact'],
-            'division': ['exact'],
-            'active': ['exact'],
-            'block': ['exact'],
-            'created': ['exact'],
-            'government': ['exact'],
-        }
+        fields = [
+            'teacher_id',
+            'id',
+            'year',
+            'type_education',
+            'division',
+            'active',
+            'block',
+            'created',
+            'government',
 
-    @property
-    def qs(self):
-        # Apply base filtering
-        parent_qs = super().qs
-        # Ensure we get distinct Student records based on teacher
-        return parent_qs.distinct('coursesubscription__course__teacher__id')
+            
+            ] 
 
+    def filter_by_teacher(self, queryset, name, value):
+        return queryset.filter(
+            coursesubscription__course__teacher_id=value
+        ).distinct()

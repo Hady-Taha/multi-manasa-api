@@ -454,6 +454,21 @@ class TeacherListView(generics.ListAPIView):
     search_fields = ['name','user__username']
 
 
+class TeacherSimpleListView(APIView):
+    def get(self, request, *args, **kwargs):
+        course_category_id = request.GET.get('course_category')
+        
+        if course_category_id:
+            teacher_ids = TeacherCourseCategory.objects.filter(
+                course_category_id=course_category_id
+            ).values_list('teacher_id', flat=True).distinct()
+            queryset = Teacher.objects.filter(id__in=teacher_ids).values('id', 'name')
+        else:
+            queryset = Teacher.objects.all().values('id', 'name')
+        
+        return Response(queryset, status=status.HTTP_200_OK)
+
+
 class TeacherCreateView(generics.CreateAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Teacher.objects.all()
