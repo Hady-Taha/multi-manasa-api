@@ -8,8 +8,8 @@ urlpatterns = [
     path("sign-up/", views.StudentSignUpView.as_view(), name="student_sign_up"),
     path("sign-out/", views.StudentSignOutView.as_view(), name="student_sign_out"),
     path("sign-center-code/", views.StudentSignCenterCodeView.as_view(), name="student_sign_center_code"),
+    path("sign-center-teacher/", views.StudentSingCenterTeacher.as_view(), name="StudentSingCenterTeacher"),
     path("token-refresh/", TokenRefreshView.as_view(), name="token_refresh"),
-    
     #* < ==============================[ <- Reset Password  -> ]============================== > ^#
     path("request-reset-password/", views.RequestResetPasswordView.as_view(), name="request_password_reset"),
     path("verify-pin-code/", views.VerifyPinCodeView.as_view(), name="verify_pin_code"),
