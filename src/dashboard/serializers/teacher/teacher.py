@@ -90,7 +90,6 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
     course_categories = serializers.PrimaryKeyRelatedField(
         queryset=CourseCategory.objects.all(),
         many=True,
-        write_only=True,
         required=False
     )
 

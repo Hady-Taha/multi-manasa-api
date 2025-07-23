@@ -10,7 +10,6 @@ urlpatterns = [
     #* < ==============================[ <- Course -> ]============================== > ^#
     path("list/", views.CourseListView.as_view(), name="CourseListView"),
     path("center/list/", views.CourseCenterListView.as_view(), name="CourseCenterListView"),
-
     path("details/<int:id>/", views.CourseDetailView.as_view(), name="Course_detail_view"),
     #* < ==============================[ <- Unit -> ]============================== > ^#
     path("unit/list/<int:course_id>/", views.UnitListView.as_view(), name="unit_list_view"),
