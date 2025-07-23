@@ -29,6 +29,7 @@ urlpatterns = [
 
     #* < ==============================[ <- CourseCategory -> ]============================== > ^#
     path('course/category/list/', views.CourseCategoryListView.as_view(), name='course-category-list'),
+    path('course/category/list/simple/', views.CourseCategoryListSimpleView.as_view(), name='course-category-list-simple'),
     path('course/category/create/', views.CourseCategoryCreateView.as_view(), name='course-category-create'),
     path('course/category/update/<int:id>/', views.CourseCategoryUpdateView.as_view(), name='course-category-update'),
     path('course/category/delete/<int:id>/', views.CourseCategoryDeleteView.as_view(), name='course-category-delete'),

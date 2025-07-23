@@ -440,7 +440,7 @@ class AssignGroupToUserView(APIView):
 #* < ==============================[ <- Teacher -> ]============================== > ^#
 
 class TeacherListView(generics.ListAPIView):
-    queryset = Teacher.objects.all()
+    queryset = Teacher.objects.all().order_by("-created")
     serializer_class = TeacherListSerializer
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, SearchFilter]
@@ -514,6 +514,15 @@ class CourseCategoryListView(generics.ListAPIView):
         'name'
         ]
     search_fields = ['name']
+
+class CourseCategoryListSimpleView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        qr = CourseCategory.objects.values("id", "name",)
+
+        return Response(qr, status=status.HTTP_200_OK)
+
 
 class CourseCategoryCreateView(generics.CreateAPIView):
     queryset = CourseCategory.objects.all()
