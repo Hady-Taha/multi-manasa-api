@@ -14,7 +14,7 @@ from rest_framework import generics
 from exam.serializers import ExamSerializer
 from .models import CourseCategory,Course,Unit
 from .serializers import TeacherListSerializer,CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
-from teacher.models import Teacher
+from teacher.models import Teacher,TeacherCenterStudentCode
 
 
 #* < ==============================[ <- Teacher -> ]============================== > ^#
@@ -87,6 +87,20 @@ class CourseListView(generics.ListAPIView):
         return context
 
 
+class CourseCenterListView(generics.ListAPIView):
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['teacher','category']
+
+    def get_queryset(self):
+        student = self.request.user.student
+        teachers=TeacherCenterStudentCode.objects.filter(student=student)
+        queryset = Course.objects.filter(is_center=True,year=student.year.id,teacher__in=teachers)
+        return queryset
+
+
+
 class CourseDetailView(generics.RetrieveAPIView):
     queryset = Course.objects.all() 
     serializer_class = CourseSerializer
@@ -117,6 +131,9 @@ class CourseDetailView(generics.RetrieveAPIView):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+
+
 
 
 #* < ==============================[ <- Unit -> ]============================== > ^#
