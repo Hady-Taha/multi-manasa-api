@@ -6,7 +6,7 @@ from dashboard.serializers.student.student import StudentSerializer
 from exam.models import Answer, DifficultyLevel, Exam, ExamModel, ExamModelQuestion, ExamQuestion, ExamType, Question, QuestionCategory, QuestionType, RandomExamBank, RelatedToChoices, Result, EssaySubmission, ResultTrial, Submission, TempExamAllowedTimes, VideoQuiz
 from student.models import Student
 
-class ExamSerializer(serializers.ModelSerializer):
+class TeacherExamSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     related_year = serializers.SerializerMethodField()
     related_course = serializers.SerializerMethodField()
@@ -118,12 +118,13 @@ class ExamSerializer(serializers.ModelSerializer):
         return data
 
 
-class QuestionCategorySerializer(serializers.ModelSerializer):
+class TeacherQuestionCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = QuestionCategory
         fields = ['id', 'title', 'course']
 
-class AnswerSerializer(serializers.ModelSerializer):
+
+class TeacherAnswerSerializer(serializers.ModelSerializer):
     image = serializers.ImageField(required=False, allow_null=True)
     
     class Meta:
@@ -135,8 +136,9 @@ class AnswerSerializer(serializers.ModelSerializer):
             'is_correct': {'required': False, 'default': False}
         }
 
-class QuestionSerializer(serializers.ModelSerializer):
-    answers = AnswerSerializer(many=True, required=False)
+
+class TeacherQuestionSerializer(serializers.ModelSerializer):
+    answers = TeacherAnswerSerializer(many=True, required=False)
     image = serializers.ImageField(required=False, allow_null=True)
 
     class Meta:
@@ -173,11 +175,11 @@ class QuestionSerializer(serializers.ModelSerializer):
     
     def to_representation(self, instance):
         representation = super().to_representation(instance)
-        representation['answers'] = AnswerSerializer(instance.answers.all(), many=True).data
+        representation['answers'] = TeacherAnswerSerializer(instance.answers.all(), many=True).data
         return representation
 
 
-class EssaySubmissionSerializer(serializers.ModelSerializer):
+class TeacherEssaySubmissionSerializer(serializers.ModelSerializer):
     answer_file_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -204,14 +206,16 @@ class EssaySubmissionSerializer(serializers.ModelSerializer):
             representation['question_image'] = None
         return representation
 
-class RandomExamBankSerializer(serializers.ModelSerializer):
-    questions = QuestionSerializer(many=True, read_only=True)
+
+class TeacherRandomExamBankSerializer(serializers.ModelSerializer):
+    questions = TeacherQuestionSerializer(many=True, read_only=True)
 
     class Meta:
         model = RandomExamBank
         fields = ['exam', 'questions']
 
-class ExamModelSerializer(serializers.ModelSerializer):
+
+class TeacherExamModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExamModel
         fields = '__all__'
@@ -221,30 +225,18 @@ class ExamModelSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("The exam type must be 'RANDOM'.")
         return value
 
-class ResultSerializer(serializers.ModelSerializer):
+
+class TeacherResultSerializer(serializers.ModelSerializer):
     result_id = serializers.IntegerField(source='id')
     exam_id = serializers.IntegerField(source='exam.id', read_only=True)
-    # exam_title = serializers.CharField(source='exam.title', read_only=True)
-    # exam_description = serializers.CharField(source='exam.description', read_only=True)
-    # exam_related_to = serializers.CharField(source='exam.related_to', read_only=True)
-    # exam_unit = serializers.IntegerField(source='exam.unit.id', allow_null=True, read_only=True)
-    # exam_video = serializers.IntegerField(source='exam.video.id', allow_null=True, read_only=True)
-    # exam_course = serializers.SerializerMethodField()
     exam_score = serializers.SerializerMethodField()
     student_score = serializers.SerializerMethodField()
     number_of_allowed_trials = serializers.IntegerField(source='exam.number_of_allowed_trials', read_only=True)
     trials = serializers.IntegerField(source='trial')
-    # trials_finished = serializers.BooleanField(source='is_trials_finished', read_only=True)
-    # passing_percent = serializers.IntegerField(source='exam.passing_percent', read_only=True)
-    # is_succeeded = serializers.SerializerMethodField()
     correct_questions_count = serializers.SerializerMethodField()
     incorrect_questions_count = serializers.SerializerMethodField()
     insolved_questions_count = serializers.SerializerMethodField()
-    # number_of_questions = serializers.SerializerMethodField()
     allowed_to_show_result = serializers.SerializerMethodField()
-    # added_at = serializers.DateTimeField(source='added', read_only=True)
-    # start = serializers.DateTimeField(source='exam.start', read_only=True)
-    # end = serializers.DateTimeField(source='exam.end', read_only=True)
     student_id = serializers.IntegerField(source='student.id', read_only=True)
     student_name = serializers.CharField(source='student.name', read_only=True)
     student_phone = serializers.CharField(source='student.user.username', read_only=True)
@@ -253,33 +245,20 @@ class ResultSerializer(serializers.ModelSerializer):
     student_started_exam_at = serializers.SerializerMethodField()  # Fetch from ResultTrial
     student_submitted_exam_at = serializers.SerializerMethodField()  # Fetch from ResultTrial
     submit_type = serializers.SerializerMethodField()
+    
     class Meta:
         model = Result
         fields = [
             'result_id',
             'exam_id',
-            # 'exam_title',
-            # 'exam_description',
-            # 'exam_related_to',
-            # 'exam_unit',
-            # 'exam_video',
-            # 'exam_course',
             'exam_score',
             'student_score',
             'trials',
-            # 'trials_finished',
             'number_of_allowed_trials',
-            # 'is_succeeded',
             'correct_questions_count',
             'incorrect_questions_count',
             'insolved_questions_count',
-            # 'number_of_questions',
             'allowed_to_show_result',
-            # 'passing_percent',
-            # 'added_at',
-            # 'start',
-            # 'end',
-            
             'student_id',
             'student_name',
             'student_phone',
@@ -289,10 +268,6 @@ class ResultSerializer(serializers.ModelSerializer):
             'student_submitted_exam_at',
             'submit_type',
         ]
-
-    # def get_exam_course(self, obj):
-    #     """Retrieve related course from the Exam model."""
-    #     return obj.exam.get_related_course()
 
     def get_exam_score(self, obj):
         """Fetch the exam_score from the active trial."""
@@ -326,22 +301,9 @@ class ResultSerializer(serializers.ModelSerializer):
             student=obj.student, exam=obj.exam, is_solved=False,result_trial=obj.active_trial
         ).count()
 
-    # def get_number_of_questions(self, obj):
-    #     """Get the total number of questions in the exam."""
-    #     if obj.exam.type == ExamType.RANDOM and obj.exam_model:
-    #         return ExamModelQuestion.objects.filter(exam_model=obj.exam_model).count()
-    #     return Question.objects.filter(exam_questions__exam=obj.exam, is_active=True).count()
-
     def get_allowed_to_show_result(self, obj):
         """Check if the result can be shown."""
         return obj.exam.allow_show_results_at <= timezone.now()
-
-    # def get_is_succeeded(self, obj):
-    #     """Determine if the student passed the exam."""
-    #     active_trial = obj.active_trial
-    #     if active_trial:
-    #         return active_trial.score >= (obj.exam.passing_percent / 100) * active_trial.exam_score
-    #     return False
 
     def get_student_started_exam_at(self, obj):
         """Fetch the start time from the active trial."""
@@ -365,8 +327,7 @@ class ResultSerializer(serializers.ModelSerializer):
         return None
 
 
-
-class ResultTrialSerializer(serializers.ModelSerializer):
+class TeacherResultTrialSerializer(serializers.ModelSerializer):
     class Meta:
         model = ResultTrial
         fields = [
@@ -377,47 +338,9 @@ class ResultTrialSerializer(serializers.ModelSerializer):
             'student_started_exam_at',
             'student_submitted_exam_at'
         ]
-        
-class BriefedResultSerializer(serializers.ModelSerializer):
-    examscore = serializers.SerializerMethodField()
-    student_score = serializers.SerializerMethodField()
-    issucceeded = serializers.BooleanField(source='is_succeeded')
-    exam_title = serializers.SerializerMethodField()
-    trials = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Result
-        fields = [
-            'id',
-            'exam',
-            'exam_title',
-            'examscore',
-            'student_score',
-            'trial',
-            'is_trials_finished',
-            'issucceeded',
-            'added',
-            'trials'
-        ]
 
-    def get_exam_title(self, obj):
-        return obj.exam.title if obj.exam else None
-
-    def get_examscore(self, obj):
-        # Fetch exam_score from the active trial
-        active_trial = obj.active_trial
-        return active_trial.exam_score if active_trial else 0
-
-    def get_student_score(self, obj):
-        # Fetch student_score from the active trial
-        active_trial = obj.active_trial
-        return active_trial.score if active_trial else 0
-
-    def get_trials(self, obj):
-        trials = obj.trials.all()
-        return ResultTrialSerializer(trials, many=True).data
-
-class FlattenedExamResultSerializer(serializers.ModelSerializer):
+class TeacherFlattenedExamResultSerializer(serializers.ModelSerializer):
     # Exam fields with prefixed names
     exam_id = serializers.IntegerField(source='id')
     exam_title = serializers.CharField(source='title')
@@ -528,7 +451,7 @@ class FlattenedExamResultSerializer(serializers.ModelSerializer):
     def get_trials(self, obj):
         result = self._get_result_for_student(obj)
         trials = result.trials.all() if result else []
-        return ResultTrialSerializer(trials, many=True).data
+        return TeacherResultTrialSerializer(trials, many=True).data
     
     def _get_result_for_student(self, obj):
         # Get the student_id from the context (set in the view)
@@ -546,36 +469,13 @@ class FlattenedExamResultSerializer(serializers.ModelSerializer):
             return Result.objects.filter(exam=obj, student_id=student_id).first()
 
 
-
-class StudentFlatSerializer(serializers.ModelSerializer):
-    student_id = serializers.IntegerField(source='id')
-    student_user__username = serializers.CharField(source='user.username')
-    student_name = serializers.CharField(source='name')
-    student_parent_phone = serializers.CharField(source='parent_phone')
-    student_type_education = serializers.IntegerField(source='type_education.id')
-    student_year_id = serializers.IntegerField(source='year.id')
-    student_government = serializers.CharField(source='government')
-    student_code = serializers.CharField(source='code')
-    student_jwt_token = serializers.CharField(source='jwt_token')
-    student_is_center = serializers.BooleanField(source='is_center')
-
+class TeacherStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = [
-            'student_id',
-            'student_user__username',
-            'student_name',
-            'student_parent_phone',
-            'student_type_education',
-            'student_year_id',
-            'student_government',
-            'student_code',
-            'student_jwt_token',
-            'student_is_center',
-        ]
+        fields = '__all__'
 
 
-class FlattenedStudentResultSerializer(serializers.ModelSerializer):
+class TeacherFlattenedStudentResultSerializer(serializers.ModelSerializer):
     # Student fields with prefixed names
     student_id = serializers.IntegerField(source='id')
     student_user__username = serializers.CharField(source='user.username')
@@ -655,7 +555,7 @@ class FlattenedStudentResultSerializer(serializers.ModelSerializer):
     def get_trials(self, obj):
         result = self._get_result_for_exam(obj)
         trials = result.trials.all() if result else []
-        return ResultTrialSerializer(trials, many=True).data
+        return TeacherResultTrialSerializer(trials, many=True).data
     
     def _get_result_for_exam(self, obj):
         # Get the exam from the context (set in the view)
@@ -673,26 +573,14 @@ class FlattenedStudentResultSerializer(serializers.ModelSerializer):
             return obj.result_set.filter(exam_id=exam_id).first()
 
 
-
-class CombinedStudentResultSerializer(serializers.ModelSerializer):
-    result = BriefedResultSerializer(source='result_set', many=True, read_only=True)
-    student = StudentSerializer(source='*')
-
-    class Meta:
-        model = Student
-        fields = [
-            'student',
-            'result'
-        ]
-
-
-class CopyExamSerializer(serializers.Serializer):
+class TeacherCopyExamSerializer(serializers.Serializer):
     course = serializers.PrimaryKeyRelatedField(queryset=Course.objects.all())
     unit = serializers.PrimaryKeyRelatedField(queryset=Unit.objects.all(), required=False, allow_null=True)
     video = serializers.PrimaryKeyRelatedField(queryset=Video.objects.all(), required=False, allow_null=True)
     related_to = serializers.ChoiceField(choices=RelatedToChoices.choices)
 
-class ExamQuestionReorderSerializer(serializers.Serializer):
+
+class TeacherExamQuestionReorderSerializer(serializers.Serializer):
     exam_question = serializers.IntegerField(help_text="ID of the ExamQuestion instance.")
     # Use IntegerField for new_order, then validate it's positive
     new_order = serializers.IntegerField(help_text="The new order value for the ExamQuestion.")
@@ -710,9 +598,9 @@ class ExamQuestionReorderSerializer(serializers.Serializer):
         return value
 
 
-class ExamQuestionSerializer(serializers.ModelSerializer):
+class TeacherExamQuestionSerializer(serializers.ModelSerializer):
     exam_question_id = serializers.IntegerField(source='id')
-    question = QuestionSerializer()
+    question = TeacherQuestionSerializer()
 
     class Meta:
         model = ExamQuestion
@@ -726,10 +614,9 @@ class ExamQuestionSerializer(serializers.ModelSerializer):
         return question_data
 
 
-
 #^ < ==============================[ <- video quiz -> ]============================== > ^#
 
-class VideoQuizSerializer(serializers.ModelSerializer):
+class TeacherVideoQuizSerializer(serializers.ModelSerializer):
     # Custom read-only fields from related objects
     exam_title = serializers.CharField(source='exam.title', read_only=True)
     exam_start = serializers.DateTimeField(source='exam.start', read_only=True)
@@ -739,7 +626,6 @@ class VideoQuizSerializer(serializers.ModelSerializer):
 
     video_name = serializers.CharField(source='video.name', read_only=True)
     video_video_duration = serializers.IntegerField(source='video.video_duration', read_only=True)
-
 
     class Meta:
         model = VideoQuiz
@@ -777,21 +663,3 @@ class VideoQuizSerializer(serializers.ModelSerializer):
             )
             
         return data
-
-#^ < ==============================[ <- Student Temp Exams -> ]============================== > ^#
-
-class TempExamAllowedTimesSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = TempExamAllowedTimes
-        fields = ['number_of_allowedtempexams_per_day']
-
-
-    def validate_number_of_allowedtempexams_per_day(self, value):
-        if value < 0:
-            raise serializers.ValidationError("Number of allowed temp exams per day cannot be negative.")
-        return value
-
-
-
-
-
