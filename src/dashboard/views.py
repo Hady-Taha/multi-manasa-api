@@ -456,12 +456,12 @@ class TeacherListView(generics.ListAPIView):
 
 class TeacherSimpleListView(APIView):
     def get(self, request, *args, **kwargs):
-        course_category_id = request.GET.get('course_category')
+        course_category_id = request.GET.get('course_category_id')
         
         if course_category_id:
             teacher_ids = TeacherCourseCategory.objects.filter(
                 course_category_id=course_category_id
-            ).values_list('teacher_id', flat=True).distinct()
+            ).values_list('teacher_id', flat=True)
             queryset = Teacher.objects.filter(id__in=teacher_ids).values('id', 'name')
         else:
             queryset = Teacher.objects.all().values('id', 'name')
@@ -1155,7 +1155,7 @@ class GenerateTeacherCenterStudentCodes(APIView):
         
     def post(self, request, *args, **kwargs):
         quantity = int(request.data.get("quantity", 0))
-        teacher = get_object_or_404(Teacher, id=request.data.get("teacher"))
+        teacher = get_object_or_404(Teacher, id=request.data.get("teacher_id"))
 
         if quantity <= 0:
             return Response({"detail": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST)

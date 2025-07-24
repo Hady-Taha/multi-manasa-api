@@ -26,6 +26,12 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
             'email',
             'government',
             'active',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
             'course_categories',
         ]
 
@@ -71,8 +77,14 @@ class TeacherListSerializer(serializers.ModelSerializer):
             'government',
             'course_count',
             'active',
-            'created',
             'course_categories',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
+            'created',
         ]
         
     def get_course_categories(self, obj):
@@ -104,6 +116,12 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
             'government',
             'active',
             'course_categories',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
         ]
 
     def update(self, instance, validated_data):

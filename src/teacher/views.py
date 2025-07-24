@@ -111,10 +111,6 @@ class TeacherCourseCategoryView(generics.ListAPIView):
         return Response(qr,status=status.HTTP_200_OK)
 
 
-
-
-
-
 #* < ==============================[ <- Course -> ]============================== > ^#
 
 #* Course
