@@ -14,7 +14,7 @@ from rest_framework import generics
 from exam.serializers import ExamSerializer
 from .models import CourseCategory,Course,Unit
 from .serializers import TeacherListSerializer,CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
-from teacher.models import Teacher,TeacherCenterStudentCode
+from teacher.models import Teacher,TeacherCenterStudentCode,TeacherCourseCategory
 
 
 #* < ==============================[ <- Teacher -> ]============================== > ^#
@@ -29,10 +29,19 @@ class TeacherListView(generics.ListAPIView):
         return Teacher.objects.filter(active=True)
 
 
-class TeacherSimpleListView(generics.ListAPIView):
-    def get(self,request,*args, ** kwargs):
-        qr = Teacher.objects.all().values("id",'name')
-        return Response(qr,status=status.HTTP_200_OK)
+class TeacherSimpleListView(APIView):
+    def get(self, request, *args, **kwargs):
+        course_category_id = request.GET.get('course_category_id')
+        
+        if course_category_id:
+            teacher_ids = TeacherCourseCategory.objects.filter(
+                course_category_id=course_category_id
+            ).values_list('teacher_id', flat=True)
+            queryset = Teacher.objects.filter(id__in=teacher_ids).values('id', 'name')
+        else:
+            queryset = Teacher.objects.all().values('id', 'name')
+        
+        return Response(queryset, status=status.HTTP_200_OK)
 
 
 #* < ==============================[ <- Categories -> ]============================== > ^#
