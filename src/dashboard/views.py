@@ -1886,8 +1886,8 @@ class ExamListCreateView(generics.ListCreateAPIView):
     serializer_class = ExamSerializer
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, OrderingFilter,SearchFilter]
-    filterset_fields = ['related_to', 'is_active', 'unit', 'video', 'type','created','start','end','allow_show_results_at']
-    search_fields = ['title', 'description', 'unit__name', 'video__name']
+    filterset_fields = ['related_to', 'is_active','course' , 'course__teacher' ,'unit', 'video', 'type','created','start','end','allow_show_results_at']
+    search_fields = ['title', 'description','course__name' , 'course__teacher__name', 'unit__name', 'video__name']
     ordering_fields = ['start', 'end']
 
     def get_queryset(self):
@@ -1943,7 +1943,7 @@ class QuestionCategoryListCreateView(generics.ListCreateAPIView):
     queryset = QuestionCategory.objects.all()
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = QuestionCategorySerializer
-    filterset_fields = ['year']
+    filterset_fields = ['course']
 
 
 class QuestionCategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
@@ -1959,9 +1959,10 @@ class QuestionListCreateView(generics.ListCreateAPIView):
     parser_classes = (MultiPartParser, FormParser)
     filter_backends = (DjangoFilterBackend, SearchFilter)
     filterset_fields = {
+        'course': ['exact'],
         'video': ['exact'],
         'is_active': ['exact'],
-        'category__year': ['exact'],
+        'category__course': ['exact'],
         'difficulty': ['exact'],
         'category': ['exact'],
         'unit__course': ['exact'],
@@ -2143,6 +2144,7 @@ class BulkQuestionCreateView(generics.CreateAPIView):
                         'points': request.data.get(f'questions[{q_index}][points]'),
                         'difficulty': request.data.get(f'questions[{q_index}][difficulty]'),
                         'category': request.data.get(f'questions[{q_index}][category]'),
+                        'course': request.data.get(f'questions[{q_index}][course]'),
                         'video': request.data.get(f'questions[{q_index}][video]'),
                         'unit': request.data.get(f'questions[{q_index}][unit]'),
                         # 'is_active': request.data.get(f'questions[{q_index}][is_active]') == 'true',
@@ -2223,7 +2225,7 @@ class AnswerRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AnswerSerializer
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
 
-#^ Essay Question
+#^ Essay Submission
 class EssaySubmissionListView(generics.ListAPIView):
     queryset = EssaySubmission.objects.all()
     permission_classes = [IsAdminUser, CustomDjangoModelPermissions]

@@ -160,10 +160,10 @@ class Exam(models.Model):
 
 class QuestionCategory(models.Model):
     title = models.CharField(max_length=200)
-    year = models.ForeignKey(
-        Year, on_delete=models.CASCADE, null=True, blank=True, db_index=True, related_name='questioncategories'
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, null=True, blank=True, db_index=True, related_name='questioncategories'
     )
-    
+
     def __str__(self):
         return self.title
 
@@ -181,6 +181,9 @@ class Question(models.Model):
     unit = models.ForeignKey(
         Unit, on_delete=models.CASCADE, null=True, blank=True, db_index=True, related_name='unitquestions'
     )
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='questions', null=True, blank=True
+    )
     is_active = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     question_type = models.CharField(max_length=5, choices=QuestionType.choices, default=QuestionType.MCQ)
@@ -190,6 +193,14 @@ class Question(models.Model):
         # Automatically set the unit based on the video if not provided
         if self.video and not self.unit:
             self.unit = self.video.unit
+        # Automatically set the course based on category, unit or video if not provided
+        if not self.course:
+            if self.category and self.category.course:
+                self.course = self.category.course
+            elif self.unit:
+                self.course = self.unit.course
+            elif self.video:
+                self.course = self.video.unit.course
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -463,4 +474,4 @@ class VideoQuizResult(models.Model):
         return self.student_score >= (self.video_quiz.exam.passing_percent / 100) * self.exam_score
 
     class Meta:
-        unique_together = ('student', 'video_quiz')  
+        unique_together = ('student', 'video_quiz')
