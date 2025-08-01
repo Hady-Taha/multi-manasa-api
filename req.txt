@@ -22,4 +22,4 @@ user-agents
 PyMuPDF
 pyfcm
 firebase-admin
-#google-generativeai
+google-generativeai
