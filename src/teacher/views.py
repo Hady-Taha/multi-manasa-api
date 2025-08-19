@@ -4,7 +4,10 @@ import datetime
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
+from django.db.models import Q, Count, When, BooleanField, Prefetch,Sum,F,Case
+from django.db import transaction
 #REST LIB
+from rest_framework.parsers import JSONParser
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +18,7 @@ from rest_framework.exceptions import  NotFound
 from rest_framework import generics
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.parsers import MultiPartParser, FormParser
 # FILES
 from core.permissions import IsTeacher
 from exam.serializers import ExamSerializer

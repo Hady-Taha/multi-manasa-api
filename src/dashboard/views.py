@@ -1313,7 +1313,6 @@ class CourseSubscriptionList(generics.ListAPIView):
         'student__name',
         'student__user__username',
         'course__name',
-
         'invoice__sequence',
         ]
 
