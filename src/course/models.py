@@ -106,37 +106,65 @@ class StreamType(models.TextChoices):
 
 
 class Video(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE,blank=True, null=True)
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=250)
     description = models.TextField(blank=True, null=True)
     unit = models.ForeignKey(Unit, related_name="unit_videos", on_delete=models.CASCADE)
     can_view = models.IntegerField(default=5)
     views = models.IntegerField(default=0)
     duration = models.IntegerField(blank=True, null=True)
-    stream_type = models.CharField(max_length=24,choices=StreamType.choices)
+    stream_type = models.CharField(max_length=24, choices=StreamType.choices)
     stream_link = models.CharField(max_length=255)
     order = models.PositiveIntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     publisher_date = models.DateTimeField(blank=True, null=True)
     pending = models.BooleanField(default=False)
     ready = models.BooleanField(default=False)
-    can_buy =  models.BooleanField(default=False)
+    can_buy = models.BooleanField(default=False)
     free = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
-    barcode = models.UUIDField(default=uuid.uuid4,unique=True,editable=False)
+    barcode = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     embed = models.BooleanField(default=False)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.name} - id :{self.id}'
-    
-    
-    def save(self, *args, **kwargs):
-        if self.teacher is None:
-            self.teacher = self.unit.course.teacher
-        super(Video, self).save(*args, **kwargs) # Call the real save() method
 
+    def assign_teacher_if_missing(self):
+        """Assign teacher from the related course if not set."""
+        if not self.teacher:
+            self.teacher = self.unit.course.teacher
+
+    def fetch_stream_link_if_needed(self):
+        """Fetch full stream link if it's an EASYSTREAM_ENCRYPTED type without http(s) prefix."""
+        if self.stream_type != StreamType.EASYSTREAM_ENCRYPTED:
+            return
+
+        if re.match(r'^https?://', self.stream_link):
+            return
+
+        try:
+            url = f"https://stream.easy-tech.ai/video/video/get/?video_uid={self.stream_link}"
+            headers = {'api-key': settings.EASY_STREAM_API_KEY}
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            self.stream_link = data.get('stream_url')
+            if not self.stream_link:
+                raise ValidationError("Stream URL not found in API response.")
+
+        except requests.RequestException as e:
+            raise ValidationError(f"Video metadata fetch failed: {e}")
+
+    def save(self, *args, **kwargs):
+        self.assign_teacher_if_missing()
+        self.fetch_stream_link_if_needed()
+        super().save(*args, **kwargs)
+
+
+        
 
 class VideoFile(models.Model):
     name = models.CharField(max_length=50,blank=True, null=True)

@@ -472,6 +472,8 @@ class InvoicesListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = [
         'sequence',
+        'item_barcode',
+        'pay_status',
         ]
     
     def get_queryset(self):

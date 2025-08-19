@@ -18,7 +18,14 @@ from django_filters.rest_framework import DjangoFilterBackend
 # FILES
 from core.permissions import IsTeacher
 from exam.serializers import ExamSerializer
-from exam.models import Exam
+from exam.models import (
+    Answer, DifficultyLevel, Exam, ExamModel, ExamModelQuestion, ExamQuestion, 
+    ExamType, Question, QuestionCategory, QuestionType, RandomExamBank, 
+    RelatedToChoices, Result, EssaySubmission, ResultTrial, Submission, 
+    TempExamAllowedTimes, VideoQuiz
+)
+from .serializers.exam.exam import *
+
 from subscription.models import CourseSubscription
 from .models import *
 from .serializers.profile.profile import *
@@ -495,6 +502,8 @@ class TeacherRenewSubscription(APIView):
 class TeacherListStudentView(generics.ListAPIView):
     serializer_class = TeacherStudentSerializer
     permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['name', 'year', 'type_education',]
 
     def get_queryset(self):
         return Student.objects.filter(
@@ -502,7 +511,18 @@ class TeacherListStudentView(generics.ListAPIView):
         ).distinct()
         
 
-        
+class TeacherListStudentCenterView(generics.ListAPIView):
+    serializer_class = TeacherStudentSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['name', 'year', 'type_education',]
+
+    def get_queryset(self):
+        return Student.objects.filter(
+            teachercenterstudentcode__teacher=self.request.user.teacher
+        ).distinct()
+
+
 class TeacherCenterStudentSignUpView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -517,29 +537,6 @@ class TeacherCenterStudentSignUpView(APIView):
 #ap:Exam
 #^ < ==============================[ <- Exam -> ]============================== > ^#
 #^ Exam
-
-from django.shortcuts import get_object_or_404
-from django.db import models, transaction
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from django.db.models import Q, Count, Sum, F, Case, BooleanField, Prefetch
-from rest_framework import generics, status
-from rest_framework.decorators import permission_classes
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from rest_framework.filters import OrderingFilter, SearchFilter
-from django_filters.rest_framework import DjangoFilterBackend
-
-from exam.models import (
-    Answer, DifficultyLevel, Exam, ExamModel, ExamModelQuestion, ExamQuestion, 
-    ExamType, Question, QuestionCategory, QuestionType, RandomExamBank, 
-    RelatedToChoices, Result, EssaySubmission, ResultTrial, Submission, 
-    TempExamAllowedTimes, VideoQuiz
-)
-from .serializers.exam.exam import *
-
 
 class TeacherPermissionMixin:
     """Mixin to check if user is a teacher and filter by teacher's courses"""

@@ -104,7 +104,7 @@ class CourseCenterListView(generics.ListAPIView):
 
     def get_queryset(self):
         student = self.request.user.student
-        teachers=TeacherCenterStudentCode.objects.filter(student=student).values_list("teacher")
+        teachers = TeacherCenterStudentCode.objects.filter(student=student).values_list("teacher")
         queryset = Course.objects.filter(is_center=True,year=student.year.id,teacher__in=teachers)
         return queryset
 

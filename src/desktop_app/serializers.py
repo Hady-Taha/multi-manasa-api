@@ -3,35 +3,44 @@ from subscription.models import *
 from course.models import *
 from view.models import VideoView
 from exam.models import Exam,Result
+from teacher.models import TeacherCenterStudentCode
 from .models import *
+
 # Students
-
-
-class StudentListSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username')
+class TeacherStudentSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source="student.id")
+    name = serializers.CharField(source="student.name")
+    username = serializers.CharField(source="student.user.username")
+    parent_phone = serializers.CharField(source="student.parent_phone")
+    type_education_id = serializers.IntegerField(source="student.type_education.id")
+    type_education_name = serializers.CharField(source="student.type_education.name")
+    year = serializers.IntegerField(source="student.year.id")
+    year_name = serializers.CharField(source="student.year.name")
+    division = serializers.CharField(source="student.division")
+    points = serializers.CharField(source="student.points")
     student_course_count = serializers.SerializerMethodField()
-    year_name = serializers.CharField(source='year.name')
-    type_education_name = serializers.CharField(source='type_education.name')
-
     class Meta:
-        model = Student
+        model = TeacherCenterStudentCode
         fields = [
             'id',
-            'name',
             'username',
-            'code',
-            'year_name',
-            'type_education_name',
+            'name',
             'parent_phone',
-            'points',
-            'created',
+            'type_education_id',
+            'type_education_name',
             'year',
+            'year_name',
+            'points',
+            'division',
+            'code',
             'student_course_count',
         ]
     
-    def get_student_course_count(self,obj):
-        return obj.coursesubscription_set.filter(active=True).count()
-
+    def get_student_course_count(self, obj):
+        return obj.student.coursesubscription_set.filter(
+            course__teacher=obj.teacher,
+            active=True
+        ).count()
 
 # Course
 class CourseListSerializer(serializers.ModelSerializer):
@@ -55,6 +64,8 @@ class VideoListSerializer(serializers.ModelSerializer):
             'course_id',
             'course_name',
         ]
+
+
 
 # video views
 class VideoViewSerializer(serializers.ModelSerializer):

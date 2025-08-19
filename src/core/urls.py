@@ -33,7 +33,7 @@ urlpatterns = [
     path('info/',include("info.urls")),
     path('parent/',include("parent.urls")),
     path('notification/',include("notification.urls")),
-    path('center/', include("desktop_app.urls")),
+    path('center-app/', include("desktop_app.urls")),
     path('teacher/', include("teacher.urls")),
     path('analysis/', include("analysis.urls")),
     

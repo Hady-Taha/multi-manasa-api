@@ -56,6 +56,7 @@ urlpatterns = [
     
     #* < ==============================[ <- Student -> ]============================== > ^#
     path('student/list/', views.TeacherListStudentView.as_view(), name='teacher-student-list'),
+    path("student/center/list/", views.TeacherListStudentCenterView.as_view(), name="TeacherListStudentCenterView"),
     path('student/center/sign-up/code/', views.TeacherCenterStudentSignUpView.as_view(), name='teacher-center-student-sign-up'),
 
     #^ < ==============================[ <- Exam -> ]============================== > ^#
