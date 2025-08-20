@@ -2758,9 +2758,11 @@ class AddQuestionsToModel(APIView):
 
 
 #^ Results
+from django.db import connection
+
 class ResultListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = ResultSerializer
+    pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = {
         'student': ['exact'],
@@ -2776,51 +2778,210 @@ class ResultListView(generics.ListAPIView):
         'exam__description'
     ]
 
-    def get_queryset(self):
-        submitted = self.request.query_params.get('submitted', None)
+    def list(self, request, *args, **kwargs):
+        """Override list method to handle custom queryset"""
+        data = self.get_custom_data()
         
-        # Base queryset - remove the initial .distinct() from here
-        queryset = Result.objects.select_related(
-            'exam', 'student', 'exam_model'
-        ).prefetch_related(
-            Prefetch('trials', queryset=ResultTrial.objects.order_by('-trial')),
-            'exam__submissions',
-            'exam__exam_questions',
-            'exam_model__exam_model_questions'
-        ).annotate(
-            total_questions=Count('exam__exam_questions'),
-            is_allowed_to_show_result=Case(
-                When(exam__allow_show_results_at__lte=timezone.now(), then=True),
-                default=False,
-                output_field=BooleanField()
-            )
-        )
+        # Handle pagination
+        page = self.paginate_queryset(data)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
-        # Only apply the complex filtering if submitted parameter is provided
-        if submitted is not None:
+        serializer = self.get_serializer(data, many=True)
+        return Response(serializer.data)
+    
+    def get_custom_data(self):
+        # Your existing SQL query logic
+        base_sql = '''
+            SELECT DISTINCT
+                er.id,
+                er.exam_id,
+                er.student_id,
+                er.trial,
+                er.exam_model_id,
+                COALESCE(ert.score, 0) as student_score,
+                COALESCE(ert.exam_score, 0) as exam_score,
+                ert.student_started_exam_at,
+                ert.student_submitted_exam_at,
+                ert.submit_type,
+                e.number_of_allowed_trials,
+                e.allow_show_results_at,
+                e.title as exam_title,
+                e.description as exam_description,
+                s.name as student_name,
+                s.parent_phone,
+                s.jwt_token,
+                u.username as student_phone,
+                COALESCE(sub_correct.count, 0) as correct_questions_count,
+                COALESCE(sub_incorrect.count, 0) as incorrect_questions_count,
+                COALESCE(sub_unsolved.count, 0) as unsolved_questions_count
+            FROM exam_result er
+            LEFT JOIN exam_resulttrial ert ON ert.result_id = er.id AND ert.trial = er.trial
+            LEFT JOIN exam_exam e ON er.exam_id = e.id
+            LEFT JOIN student_student s ON er.student_id = s.id
+            LEFT JOIN auth_user u ON s.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    result_trial_id,
+                    COUNT(*) as count
+                FROM exam_submission
+                WHERE is_correct = true
+                GROUP BY result_trial_id
+            ) sub_correct ON sub_correct.result_trial_id = ert.id
+            LEFT JOIN (
+                SELECT
+                    result_trial_id,
+                    COUNT(*) as count
+                FROM exam_submission
+                WHERE is_correct = false
+                GROUP BY result_trial_id
+            ) sub_incorrect ON sub_incorrect.result_trial_id = ert.id
+            LEFT JOIN (
+                SELECT
+                    result_trial_id,
+                    COUNT(*) as count
+                FROM exam_submission
+                WHERE is_solved = false
+                GROUP BY result_trial_id
+            ) sub_unsolved ON sub_unsolved.result_trial_id = ert.id
+        '''
+
+        # Add filters
+        where_conditions = []
+        params = []
+
+        # Handle basic filters
+        student_id = self.request.query_params.get('student')
+        if student_id:
+            where_conditions.append('er.student_id = %s')
+            params.append(student_id)
+
+        exam_id = self.request.query_params.get('exam')
+        if exam_id:
+            where_conditions.append('er.exam_id = %s')
+            params.append(exam_id)
+
+        # Handle submitted filter
+        submitted = self.request.query_params.get('submitted')
+        if submitted:
             submitted = submitted.lower()
             if submitted in ('true', '1'):
-                # Get results where the active trial is submitted
-                queryset = queryset.filter(
-                    Q(trials__trial=F('trial'), trials__student_submitted_exam_at__isnull=False) |
-                    Q(
-                        trials__trial=F('trial') - 1,
-                        trials__student_submitted_exam_at__isnull=False
-                    ) & ~Q(trials__trial=F('trial'), trials__student_submitted_exam_at__isnull=False)
-                )
+                where_conditions.append('ert.student_submitted_exam_at IS NOT NULL')
             elif submitted in ('false', '0'):
-                # Get results where the current trial exists but isn't submitted
-                queryset = queryset.filter(
-                    trials__trial=F('trial'),
-                    trials__student_submitted_exam_at__isnull=True
-                ).exclude(
-                    trials__trial=F('trial') - 1,
-                    trials__student_submitted_exam_at__isnull=False
-                )
+                where_conditions.append('ert.student_submitted_exam_at IS NULL')
+
+        # Handle score filters
+        score_from = self.request.query_params.get('score_from')
+        if score_from:
+            try:
+                score_from = float(score_from)
+                where_conditions.append('COALESCE(ert.score, 0) >= %s')
+                params.append(score_from)
+            except (ValueError, TypeError):
+                pass
+
+        score_to = self.request.query_params.get('score_to')
+        if score_to:
+            try:
+                score_to = float(score_to)
+                where_conditions.append('COALESCE(ert.score, 0) <= %s')
+                params.append(score_to)
+            except (ValueError, TypeError):
+                pass
+
+        # Handle search
+        search = self.request.query_params.get('search')
+        if search:
+            search_condition = '''(
+                s.name ILIKE %s OR
+                u.username ILIKE %s OR
+                e.title ILIKE %s OR
+                e.description ILIKE %s
+            )'''
+            where_conditions.append(search_condition)
+            search_param = f'%{search}%'
+            params.extend([search_param, search_param, search_param, search_param])
+
+        # Add WHERE clause if we have conditions
+        if where_conditions:
+            base_sql += ' WHERE ' + ' AND '.join(where_conditions)
+
+        # Handle ordering
+        ordering = self.request.query_params.get('ordering', '-student_score')
+        if ordering == 'student_score':
+            base_sql += ' ORDER BY student_score ASC'
+        elif ordering == '-student_score':
+            base_sql += ' ORDER BY student_score DESC'
+        elif ordering == 'exam_score':
+            base_sql += ' ORDER BY exam_score ASC'
+        elif ordering == '-exam_score':
+            base_sql += ' ORDER BY exam_score DESC'
+        elif ordering == 'student__name':
+            base_sql += ' ORDER BY student_name ASC'
+        elif ordering == '-student__name':
+            base_sql += ' ORDER BY student_name DESC'
+        else:
+            base_sql += ' ORDER BY student_score DESC'
+
+        # Execute the query
+        with connection.cursor() as cursor:
+            cursor.execute(base_sql, params)
+            columns = [col[0] for col in cursor.description]
+            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        # Convert to Result objects for compatibility
+        result_objects = []
+        for row in results:
+            result = Result(
+                id=row['id'],
+                exam_id=row['exam_id'],
+                student_id=row['student_id'],
+                trial=row['trial']
+            )
+            # Add the calculated fields as attributes
+            result.student_score = row['student_score']
+            result.exam_score = row['exam_score']
+            
+            # Handle timezone-aware datetime fields
+            result.student_started_exam_at = self._make_timezone_aware(row['student_started_exam_at'])
+            result.student_submitted_exam_at = self._make_timezone_aware(row['student_submitted_exam_at'])
+            result.allow_show_results_at = self._make_timezone_aware(row['allow_show_results_at'])
+            
+            result.submit_type = row['submit_type']
+            result.correct_questions_count = row['correct_questions_count']
+            result.incorrect_questions_count = row['incorrect_questions_count']
+            result.unsolved_questions_count = row['unsolved_questions_count']
+            result.student_name = row['student_name']
+            result.student_phone = row['student_phone']
+            result.parent_phone = row['parent_phone']
+            result.jwt_token = row['jwt_token']
+            result.number_of_allowed_trials = row['number_of_allowed_trials']
+
+            result_objects.append(result)
+
+        return result_objects
+
+    def _make_timezone_aware(self, dt):
+        """Helper method to ensure datetime is timezone-aware"""
+        if dt is None:
+            return None
         
-        # Apply .distinct() at the very end to remove any duplicates
-        # caused by joins, especially from the annotation.
-        return queryset.distinct()
+        # If it's already timezone-aware, return as is
+        if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
+            return dt
+        
+        # If it's naive, make it timezone-aware
+        if hasattr(dt, 'replace'):
+            # Assume it's in UTC if naive
+            from datetime import timezone as dt_timezone
+            return timezone.make_aware(dt, dt_timezone.utc) if dt.tzinfo is None else dt
+        
+        return dt
+
+    def get_queryset(self):
+        """Required by DRF but not used in our custom implementation"""
+        return Result.objects.none()
 
 
 class ReduceResultTrialView(APIView):

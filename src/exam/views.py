@@ -242,6 +242,13 @@ class SubmitExam(APIView):
                 {"error": "No active trial found for this exam"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        
+        # prevent duplicate submissions for completed trials
+        if result_trial.student_submitted_exam_at is not None:
+            return Response(
+                {"error": "لقد أنهيت هذه المحاولة بالفعل، ابدأ محاولة جديدة"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # Process each question
         for question_id in question_ids:
@@ -274,7 +281,7 @@ class SubmitExam(APIView):
                         question=question
                     )
                     # Always create new submission with the selected answer
-                    Submission.objects.create(
+                    submission = Submission.objects.create(
                         student=student,
                         exam=exam,
                         question=question,
@@ -283,7 +290,7 @@ class SubmitExam(APIView):
                         is_solved=True,
                         is_correct=selected_answer.is_correct
                     )
-                    if not Submission.is_correct:
+                    if not submission.is_correct:
                         StudentBank.objects.get_or_create(
                             student=student,
                             question=question,
@@ -413,17 +420,17 @@ class StudentExamResultsView(generics.ListAPIView):
                 to_attr='prefetched_model_questions'
             )
         ).annotate(
-            # is_allowed_to_show_result=Case(  # Commented out as not needed
-            #     When(exam__allow_show_results_at__lte=now, then=True),
-            #     default=False,
-            #     output_field=BooleanField()
-            # ),
-            # is_allowed_to_show_answers=Case(  # Commented out as not needed
-            #     When(exam__allow_show_answers_at__isnull=True, then=False),
-            #     When(exam__allow_show_answers_at__lte=now, then=True),
-            #     default=False,
-            #     output_field=BooleanField()
-            # )
+            is_allowed_to_show_result=Case(  # Commented out as not needed
+                When(exam__allow_show_results_at__lte=now, then=True),
+                default=False,
+                output_field=BooleanField()
+            ),
+            is_allowed_to_show_answers=Case(  # Commented out as not needed
+                When(exam__allow_show_answers_at__isnull=True, then=False),
+                When(exam__allow_show_answers_at__lte=now, then=True),
+                default=False,
+                output_field=BooleanField()
+            )
         ).order_by('-added')
 
 class GetMyExamResult(APIView):
@@ -620,7 +627,7 @@ class GetMyExamResultForTrial(APIView):
                 queryset=Answer.objects.filter(is_correct=True),
                 to_attr='correct_answers_list'
             )
-        )
+        ).order_by('id')
 
         # Fetch Essay submissions
         essay_submissions = EssaySubmission.objects.filter(

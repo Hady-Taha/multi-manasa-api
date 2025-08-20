@@ -223,146 +223,81 @@ class ExamModelSerializer(serializers.ModelSerializer):
 
 class ResultSerializer(serializers.ModelSerializer):
     result_id = serializers.IntegerField(source='id')
-    exam_id = serializers.IntegerField(source='exam.id', read_only=True)
-    # exam_title = serializers.CharField(source='exam.title', read_only=True)
-    # exam_description = serializers.CharField(source='exam.description', read_only=True)
-    # exam_related_to = serializers.CharField(source='exam.related_to', read_only=True)
-    # exam_unit = serializers.IntegerField(source='exam.unit.id', allow_null=True, read_only=True)
-    # exam_video = serializers.IntegerField(source='exam.video.id', allow_null=True, read_only=True)
-    # exam_course = serializers.SerializerMethodField()
+    exam_id = serializers.IntegerField()
     exam_score = serializers.SerializerMethodField()
     student_score = serializers.SerializerMethodField()
-    number_of_allowed_trials = serializers.IntegerField(source='exam.number_of_allowed_trials', read_only=True)
-    trials = serializers.IntegerField(source='trial')
-    # trials_finished = serializers.BooleanField(source='is_trials_finished', read_only=True)
-    # passing_percent = serializers.IntegerField(source='exam.passing_percent', read_only=True)
-    # is_succeeded = serializers.SerializerMethodField()
     correct_questions_count = serializers.SerializerMethodField()
     incorrect_questions_count = serializers.SerializerMethodField()
     insolved_questions_count = serializers.SerializerMethodField()
-    # number_of_questions = serializers.SerializerMethodField()
-    allowed_to_show_result = serializers.SerializerMethodField()
-    # added_at = serializers.DateTimeField(source='added', read_only=True)
-    # start = serializers.DateTimeField(source='exam.start', read_only=True)
-    # end = serializers.DateTimeField(source='exam.end', read_only=True)
-    student_id = serializers.IntegerField(source='student.id', read_only=True)
-    student_name = serializers.CharField(source='student.name', read_only=True)
-    student_phone = serializers.CharField(source='student.user.username', read_only=True)
-    parent_phone = serializers.CharField(source='student.parent_phone', read_only=True)
-    jwt_token = serializers.CharField(source='student.jwt_token', read_only=True)
-    student_started_exam_at = serializers.SerializerMethodField()  # Fetch from ResultTrial
-    student_submitted_exam_at = serializers.SerializerMethodField()  # Fetch from ResultTrial
+    student_started_exam_at = serializers.SerializerMethodField()
+    student_submitted_exam_at = serializers.SerializerMethodField()
     submit_type = serializers.SerializerMethodField()
+    allowed_to_show_result = serializers.SerializerMethodField()
+    
+    # Direct fields
+    trials = serializers.IntegerField(source='trial')
+    number_of_allowed_trials = serializers.SerializerMethodField()
+    student_id = serializers.IntegerField()
+    student_name = serializers.SerializerMethodField()
+    student_phone = serializers.SerializerMethodField()
+    parent_phone = serializers.SerializerMethodField()
+    jwt_token = serializers.SerializerMethodField()
+
     class Meta:
         model = Result
         fields = [
-            'result_id',
-            'exam_id',
-            # 'exam_title',
-            # 'exam_description',
-            # 'exam_related_to',
-            # 'exam_unit',
-            # 'exam_video',
-            # 'exam_course',
-            'exam_score',
-            'student_score',
-            'trials',
-            # 'trials_finished',
-            'number_of_allowed_trials',
-            # 'is_succeeded',
-            'correct_questions_count',
-            'incorrect_questions_count',
-            'insolved_questions_count',
-            # 'number_of_questions',
-            'allowed_to_show_result',
-            # 'passing_percent',
-            # 'added_at',
-            # 'start',
-            # 'end',
-            
-            'student_id',
-            'student_name',
-            'student_phone',
-            'parent_phone',
-            'jwt_token',
-            'student_started_exam_at',
-            'student_submitted_exam_at',
-            'submit_type',
+            'result_id', 'exam_id', 'exam_score', 'student_score', 'trials',
+            'number_of_allowed_trials', 'correct_questions_count', 
+            'incorrect_questions_count', 'insolved_questions_count',
+            'allowed_to_show_result', 'student_id', 'student_name',
+            'student_phone', 'parent_phone', 'jwt_token',
+            'student_started_exam_at', 'student_submitted_exam_at', 'submit_type',
         ]
 
-    # def get_exam_course(self, obj):
-    #     """Retrieve related course from the Exam model."""
-    #     return obj.exam.get_related_course()
-
     def get_exam_score(self, obj):
-        """Fetch the exam_score from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.exam_score
-        return 0
+        return getattr(obj, 'exam_score', 0)
 
     def get_student_score(self, obj):
-        """Fetch the student's score from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.score
-        return 0
+        return getattr(obj, 'student_score', 0)
 
     def get_correct_questions_count(self, obj):
-        """Count correct submissions for the exam."""
-        return Submission.objects.filter(
-            student=obj.student, exam=obj.exam, is_correct=True,result_trial=obj.active_trial
-        ).count()
+        return getattr(obj, 'correct_questions_count', 0)
 
     def get_incorrect_questions_count(self, obj):
-        """Count incorrect submissions for the exam."""
-        return Submission.objects.filter(
-            student=obj.student, exam=obj.exam, is_correct=False,result_trial=obj.active_trial
-        ).count()
+        return getattr(obj, 'incorrect_questions_count', 0)
 
     def get_insolved_questions_count(self, obj):
-        """Count unsolved submissions for the exam."""
-        return Submission.objects.filter(
-            student=obj.student, exam=obj.exam, is_solved=False,result_trial=obj.active_trial
-        ).count()
-
-    # def get_number_of_questions(self, obj):
-    #     """Get the total number of questions in the exam."""
-    #     if obj.exam.type == ExamType.RANDOM and obj.exam_model:
-    #         return ExamModelQuestion.objects.filter(exam_model=obj.exam_model).count()
-    #     return Question.objects.filter(exam_questions__exam=obj.exam, is_active=True).count()
-
-    def get_allowed_to_show_result(self, obj):
-        """Check if the result can be shown."""
-        return obj.exam.allow_show_results_at <= timezone.now()
-
-    # def get_is_succeeded(self, obj):
-    #     """Determine if the student passed the exam."""
-    #     active_trial = obj.active_trial
-    #     if active_trial:
-    #         return active_trial.score >= (obj.exam.passing_percent / 100) * active_trial.exam_score
-    #     return False
+        return getattr(obj, 'unsolved_questions_count', 0)
 
     def get_student_started_exam_at(self, obj):
-        """Fetch the start time from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.student_started_exam_at
-        return None
+        return getattr(obj, 'student_started_exam_at', None)
 
     def get_student_submitted_exam_at(self, obj):
-        """Fetch the submission time from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.student_submitted_exam_at
-        return None
-    
+        return getattr(obj, 'student_submitted_exam_at', None)
+
     def get_submit_type(self, obj):
-        """Fetch the submit_type from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.submit_type
-        return None
+        return getattr(obj, 'submit_type', None)
+
+    def get_number_of_allowed_trials(self, obj):
+        return getattr(obj, 'number_of_allowed_trials', 0)
+
+    def get_student_name(self, obj):
+        return getattr(obj, 'student_name', '')
+
+    def get_student_phone(self, obj):
+        return getattr(obj, 'student_phone', '')
+
+    def get_parent_phone(self, obj):
+        return getattr(obj, 'parent_phone', '')
+
+    def get_jwt_token(self, obj):
+        return getattr(obj, 'jwt_token', '')
+
+    def get_allowed_to_show_result(self, obj):
+        allow_show_results_at = getattr(obj, 'allow_show_results_at', None)
+        if allow_show_results_at:
+            return allow_show_results_at <= timezone.now()
+        return False
 
 
 
@@ -574,10 +509,9 @@ class StudentFlatSerializer(serializers.ModelSerializer):
             'student_is_center',
         ]
 
-
 class FlattenedStudentResultSerializer(serializers.ModelSerializer):
     # Student fields with prefixed names
-    student_id = serializers.IntegerField(source='id')
+    id = serializers.SerializerMethodField() # to get the student ID
     student_user__username = serializers.CharField(source='user.username')
     student_name = serializers.CharField(source='name')
     student_parent_phone = serializers.CharField(source='parent_phone')
@@ -601,7 +535,7 @@ class FlattenedStudentResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = [
-            'student_id',
+            'id',
             'student_user__username',
             'student_name',
             'student_parent_phone',
@@ -625,6 +559,8 @@ class FlattenedStudentResultSerializer(serializers.ModelSerializer):
         # Get the first result for this exam (as per context)
         result = self._get_result_for_exam(obj)
         return result.exam.id if result else None
+    def get_id(self, obj):
+        return obj.id
     
     def get_exam_title(self, obj):
         result = self._get_result_for_exam(obj)
