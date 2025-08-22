@@ -37,7 +37,7 @@ from rest_framework.filters import SearchFilter,OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
-from core.permissions import CustomDjangoModelPermissions,IsSuperUser
+from core.permissions import CustomDjangoModelPermissions,IsSuperUser,IsTeacher,CustomDjangoModelPermissionsOrIsTeacher
 from core.pagination import CustomPageNumberPagination
 from .filters import *
 from .utils import copy_unit_to_course
@@ -100,7 +100,7 @@ class StudentsListView(generics.ListAPIView):
 
 
 class StudentUpdateView(generics.UpdateAPIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    ppermission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Student.objects.all()
     serializer_class = UpdateStudentSerializer
     lookup_field = 'id'
@@ -1849,7 +1849,7 @@ class NotificationCreateView(APIView):
 class ExamListCreateView(generics.ListCreateAPIView):
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     filter_backends = [DjangoFilterBackend, OrderingFilter,SearchFilter]
     filterset_fields = ['related_to', 'is_active','course' , 'course__teacher' ,'unit', 'video', 'type','created','start','end','allow_show_results_at']
     search_fields = ['title', 'description','course__name' , 'course__teacher__name', 'unit__name', 'video__name']
@@ -1901,25 +1901,25 @@ class ExamListCreateView(generics.ListCreateAPIView):
 class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
 
 #^ QuestionCategory 
 class QuestionCategoryListCreateView(generics.ListCreateAPIView):
     queryset = QuestionCategory.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     serializer_class = QuestionCategorySerializer
     filterset_fields = ['course']
 
 
 class QuestionCategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = QuestionCategory.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     serializer_class = QuestionCategorySerializer
 
 #^ Question , Answer
 class QuestionListCreateView(generics.ListCreateAPIView):
     queryset = Question.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    # permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     serializer_class = QuestionSerializer
     parser_classes = (MultiPartParser, FormParser)
     filter_backends = (DjangoFilterBackend, SearchFilter)
@@ -2002,7 +2002,7 @@ class QuestionListCreateView(generics.ListCreateAPIView):
 class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     parser_classes = (MultiPartParser, FormParser)
 
     def patch(self, request, *args, **kwargs):
@@ -2077,7 +2077,7 @@ class BulkQuestionCreateView(generics.CreateAPIView):
     serializer_class = QuestionSerializer
     parser_classes = (MultiPartParser, FormParser)
 
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
 
     def create(self, request, *args, **kwargs):
         try:
@@ -2180,7 +2180,7 @@ class BulkQuestionCreateView(generics.CreateAPIView):
 class AnswerListCreateView(generics.ListCreateAPIView):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['question']
 
@@ -2188,7 +2188,7 @@ class AnswerListCreateView(generics.ListCreateAPIView):
 class AnswerRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
 
 #^ Essay Submission
 class EssaySubmissionListView(generics.ListAPIView):
@@ -2296,7 +2296,7 @@ class QuestionCountView(APIView):
     Endpoint to get the count of questions with details.
     Allows filtering by is_active, difficulty, category, video, unit, course, and question_type.
     """
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Question.objects.all()
 
     def get(self, request, *args, **kwargs):
@@ -2355,7 +2355,7 @@ class QuestionCountView(APIView):
 
 #^ Exam Questions
 class GetExamQuestions(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Exam.objects.all()
 
     def get(self, request, exam_id):
@@ -2383,7 +2383,7 @@ class GetExamQuestions(APIView):
 
 #^ add questions to an exam (manual and bank)
 class AddBankExamQuestionsView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     parser_classes = [JSONParser]  # Use JSONParser to parse JSON data
     queryset = Question.objects.all()
 
@@ -2435,7 +2435,7 @@ class AddBankExamQuestionsView(APIView):
 
 
 class AddManualExamQuestionsView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     parser_classes = [MultiPartParser, FormParser]
     queryset = Question.objects.all()
     def post(self, request, exam_id):
@@ -2480,7 +2480,7 @@ class AddManualExamQuestionsView(APIView):
 
 
 class RemoveExamQuestion(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Question.objects.all()
     def delete(self, request, exam_id, question_id):
         # Fetch the exam
@@ -2505,7 +2505,7 @@ class RemoveExamQuestion(APIView):
 
 #^ add questions to RandomExamBank (the small bank of questions selected for a random exam to create the models of them)
 class GetRandomExamBank(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = ExamModel.objects.all()
     def get(self, request, exam_id):
         # Fetch the exam
@@ -2526,7 +2526,7 @@ class GetRandomExamBank(APIView):
 
 
 class AddToRandomExamBank(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = ExamModel.objects.all()
     def post(self, request, exam_id):
         # Fetch the exam
@@ -2561,19 +2561,19 @@ class AddToRandomExamBank(APIView):
 #^ ExamModels
 class ExamModelListCreateView(generics.ListCreateAPIView):
     queryset = ExamModel.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     serializer_class = ExamModelSerializer
     filterset_fields = ['is_active', 'exam']
 
 
 class ExamModelRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ExamModel.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     serializer_class = ExamModelSerializer
 
 #^ get examModel questions (he already added questions , to be reviewed by admin )
 class GetExamModelQuestions(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = ExamModel.objects.all()
     def get(self, request, exam_model_id):
         # Fetch the exam model
@@ -2598,7 +2598,7 @@ class GetExamModelQuestions(APIView):
 
 #^ Remove Question from an ExamModel
 class RemoveQuestionFromExamModel(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = ExamModel.objects.all()
     def delete(self, request, exam_model_id, question_id):
         try:
@@ -2617,7 +2617,7 @@ class RemoveQuestionFromExamModel(APIView):
 
 #^ get : gets questions (randomly) from the RandomExamBank related to that exam so the teacher reviews them and modify or delete some (using other endpoints we already have)
 class SuggestQuestionsForModel(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = ExamModel.objects.all()
     def get_random_questions(self, exam: Exam, related_questions: QuerySet) -> List[Question]:
         """
@@ -2705,7 +2705,7 @@ class SuggestQuestionsForModel(APIView):
 
 # post : receives the reviewed suggestions and modified questions to store them in the ExamModelQuestion )
 class AddQuestionsToModel(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = ExamModel.objects.all()
     def post(self, request, exam_id, exam_model_id):
         try:
@@ -2768,6 +2768,7 @@ class ResultListView(generics.ListAPIView):
         'student': ['exact'],
         'exam': ['exact'],
         'exam__unit': ['exact'],
+        'exam__course': ['exact'],
         'exam__video': ['exact'],
         'exam__related_to': ['exact'],
     }
@@ -2861,6 +2862,27 @@ class ResultListView(generics.ListAPIView):
         if exam_id:
             where_conditions.append('er.exam_id = %s')
             params.append(exam_id)
+
+        # Handle exam related filters
+        exam_unit = self.request.query_params.get('exam__unit')
+        if exam_unit:
+            where_conditions.append('e.unit_id = %s')
+            params.append(exam_unit)
+
+        exam_course = self.request.query_params.get('exam__course')
+        if exam_course:
+            where_conditions.append('e.course_id = %s')
+            params.append(exam_course)
+
+        exam_video = self.request.query_params.get('exam__video')
+        if exam_video:
+            where_conditions.append('e.video_id = %s')
+            params.append(exam_video)
+
+        exam_related_to = self.request.query_params.get('exam__related_to')
+        if exam_related_to:
+            where_conditions.append('e.related_to = %s')
+            params.append(exam_related_to)
 
         # Handle submitted filter
         submitted = self.request.query_params.get('submitted')
@@ -2985,7 +3007,7 @@ class ResultListView(generics.ListAPIView):
 
 
 class ReduceResultTrialView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Exam.objects.all()
         
     
@@ -3029,7 +3051,7 @@ class ReduceResultTrialView(APIView):
 
 
 class ExamResultDetailView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Result.objects.all()
 
     def get(self, request, result_id):
@@ -3208,7 +3230,7 @@ class ExamResultDetailView(APIView):
 
 
 class ExamResultDetailForTrialView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Result.objects.all()
 
     def get(self, request, result_id, result_trial_id):
@@ -3396,7 +3418,7 @@ class ExamResultDetailForTrialView(APIView):
 
 
 class ResultTrialsView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     serializer_class = ResultTrialSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['submit_type']
@@ -3413,7 +3435,7 @@ class ResultTrialsView(generics.ListAPIView):
 #^ get students who toke the exam and those who didn't
 class StudentsTookExamAPIView(generics.ListAPIView):
     serializer_class = FlattenedStudentResultSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     queryset = Student.objects.all()
     
     def get_queryset(self):
@@ -3466,7 +3488,7 @@ class StudentsTookExamAPIView(generics.ListAPIView):
 
 class StudentsDidNotTakeExamAPIView(generics.ListAPIView):
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     
 
     def get_queryset(self):
@@ -3508,7 +3530,7 @@ class StudentsDidNotTakeExamAPIView(generics.ListAPIView):
 
 class ExamsTakenByStudentAPIView(generics.ListAPIView):
     serializer_class = FlattenedExamResultSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    # permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
     
     def get_queryset(self):
         student_id = self.kwargs['student_id']
@@ -3516,6 +3538,27 @@ class ExamsTakenByStudentAPIView(generics.ListAPIView):
 
         # Get exams taken by the student
         exams_taken = Exam.objects.filter(results__student=student).distinct()
+
+        # Add exam filtering
+        exam_course = self.request.query_params.get('exam__course')
+        if exam_course:
+            exams_taken = exams_taken.filter(
+                Q(unit__course_id=exam_course) | 
+                Q(video__unit__course_id=exam_course) |
+                Q(course_id=exam_course)
+            )
+
+        exam_related_to = self.request.query_params.get('exam__related_to')
+        if exam_related_to:
+            exams_taken = exams_taken.filter(related_to=exam_related_to)
+
+        exam_unit = self.request.query_params.get('exam__unit')
+        if exam_unit:
+            exams_taken = exams_taken.filter(unit_id=exam_unit)
+
+        exam_video = self.request.query_params.get('exam__video')
+        if exam_video:
+            exams_taken = exams_taken.filter(video_id=exam_video)
 
         # Search functionality
         search_query = self.request.query_params.get('search', None)
@@ -3548,7 +3591,7 @@ class ExamsTakenByStudentAPIView(generics.ListAPIView):
 
 class ExamsNotTakenByStudentAPIView(generics.ListAPIView):
     serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    # permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
 
     def get_queryset(self):
         student_id = self.kwargs['student_id']
@@ -3574,6 +3617,27 @@ class ExamsNotTakenByStudentAPIView(generics.ListAPIView):
         
         # Get exams not taken by the student (from subscribed courses only)
         exams_not_taken = subscribed_exams.exclude(id__in=exams_taken.values('id'))
+        
+        # Add exam filtering
+        exam_course = self.request.query_params.get('exam__course')
+        if exam_course:
+            exams_not_taken = exams_not_taken.filter(
+                Q(unit__course_id=exam_course) | 
+                Q(video__unit__course_id=exam_course) |
+                Q(course_id=exam_course)
+            )
+
+        exam_related_to = self.request.query_params.get('exam__related_to')
+        if exam_related_to:
+            exams_not_taken = exams_not_taken.filter(related_to=exam_related_to)
+
+        exam_unit = self.request.query_params.get('exam__unit')
+        if exam_unit:
+            exams_not_taken = exams_not_taken.filter(unit_id=exam_unit)
+
+        exam_video = self.request.query_params.get('exam__video')
+        if exam_video:
+            exams_not_taken = exams_not_taken.filter(video_id=exam_video)
         
         # Search functionality (optional, if needed)
         search_query = self.request.query_params.get('search', None)
