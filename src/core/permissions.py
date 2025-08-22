@@ -46,3 +46,21 @@ class IsTeacher(BasePermission):
         if not hasattr(request.user, 'teacher'):
             raise PermissionDenied("This user is not a teacher.")
         return True
+
+
+class CustomDjangoModelPermissionsOrIsTeacher(BasePermission):
+    """
+    Permission that allows access if user has either CustomDjangoModelPermissions OR IsTeacher permission.
+    """
+    def has_permission(self, request, view):
+        # Check if user has CustomDjangoModelPermissions
+        custom_perm = CustomDjangoModelPermissions()
+        if custom_perm.has_permission(request, view):
+            return True
+        
+        # Check if user is a teacher
+        teacher_perm = IsTeacher()
+        if teacher_perm.has_permission(request, view):
+            return True
+        
+        return False
