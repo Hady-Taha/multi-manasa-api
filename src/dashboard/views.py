@@ -3833,22 +3833,37 @@ class CreateOrUpdateTempExamAllowedTimes(APIView):
 class VideoQuizListCreateAPIView(generics.ListCreateAPIView):
     queryset = VideoQuiz.objects.all()
     serializer_class = VideoQuizSerializer
-    filter_backends = [DjangoFilterBackend,SearchFilter]
-    
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = [
-            'exam',
-            'course',
-            'video',
-            ]
-
+        'exam',
+        'course',
+        'video',
+    ]
     search_fields = [
         'exam__title',
-            'course__name',
-            'course__description',
-            'video__name',
-            'video__description',
-            
-        ]
+        'course__name',
+        'course__description',
+        'video__name',
+        'video__description',
+    ]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        # Get the teacher for the current user
+        user = self.request.user
+        teacher = getattr(user, "teacher", None)
+        if not teacher:
+            teacher = Teacher.objects.filter(user=user).first()
+
+        # Apply teacher filter if the user is a teacher
+        if teacher:
+            queryset = queryset.filter(
+                Q(course__teacher=teacher) |
+                Q(video__unit__course__teacher=teacher)
+            )
+
+        return queryset
 
 
 class VideoQuizRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
