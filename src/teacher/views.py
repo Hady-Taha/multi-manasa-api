@@ -4,7 +4,10 @@ import datetime
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.shortcuts import get_object_or_404
+from django.db.models import Q, Count, When, BooleanField, Prefetch,Sum,F,Case
+from django.db import transaction
 #REST LIB
+from rest_framework.parsers import JSONParser
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,10 +18,18 @@ from rest_framework.exceptions import  NotFound
 from rest_framework import generics
 from rest_framework.filters import OrderingFilter, SearchFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.parsers import MultiPartParser, FormParser
 # FILES
 from core.permissions import IsTeacher
 from exam.serializers import ExamSerializer
-from exam.models import Exam
+from exam.models import (
+    Answer, DifficultyLevel, Exam, ExamModel, ExamModelQuestion, ExamQuestion, 
+    ExamType, Question, QuestionCategory, QuestionType, RandomExamBank, 
+    RelatedToChoices, Result, EssaySubmission, ResultTrial, Submission, 
+    TempExamAllowedTimes, VideoQuiz
+)
+from .serializers.exam.exam import *
+
 from subscription.models import CourseSubscription
 from .models import *
 from .serializers.profile.profile import *
@@ -109,10 +120,6 @@ class TeacherCourseCategoryView(generics.ListAPIView):
     def get(self,request,*args, ** kwargs):
         qr = TeacherCourseCategory.objects.filter(teacher=request.user.teacher).values("course_category__id",'course_category__name')
         return Response(qr,status=status.HTTP_200_OK)
-
-
-
-
 
 
 #* < ==============================[ <- Course -> ]============================== > ^#
@@ -499,6 +506,8 @@ class TeacherRenewSubscription(APIView):
 class TeacherListStudentView(generics.ListAPIView):
     serializer_class = TeacherStudentSerializer
     permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['name', 'year', 'type_education',]
 
     def get_queryset(self):
         return Student.objects.filter(
@@ -506,7 +515,18 @@ class TeacherListStudentView(generics.ListAPIView):
         ).distinct()
         
 
-        
+class TeacherListStudentCenterView(generics.ListAPIView):
+    serializer_class = TeacherStudentSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['name', 'year', 'type_education',]
+
+    def get_queryset(self):
+        return Student.objects.filter(
+            teachercenterstudentcode__teacher=self.request.user.teacher
+        ).distinct()
+
+
 class TeacherCenterStudentSignUpView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -517,4 +537,5 @@ class TeacherCenterStudentSignUpView(APIView):
         get_code.is_available = False
         get_code.save()
         return Response(status=status.HTTP_200_OK)
+
 

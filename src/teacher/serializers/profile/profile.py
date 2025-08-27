@@ -18,6 +18,12 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
             'government',
             'active',
             'course_categories',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
         ]
     def get_course_categories(self, obj):
         categories = TeacherCourseCategory.objects.filter(teacher=obj).values('course_category__id', 'course_category__name')

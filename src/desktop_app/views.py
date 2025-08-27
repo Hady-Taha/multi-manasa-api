@@ -21,18 +21,27 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404 
 from .serializers import *
 from core.permissions import HasValidAPIKey
+from teacher.models import TeacherCenterStudentCode,Teacher
 from .models import *
 from datetime import datetime 
 # Create your views here.
 
-# Student
-class StudentList(generics.ListAPIView):
-    queryset = Student.objects.select_related('user', 'type_education', 'year').filter(is_center=True).order_by("-created")
-    serializer_class = StudentListSerializer
+# Teacher
+class TeacherSimpleListView(APIView):
     permission_classes = [HasValidAPIKey]
+    def get(self, request,*args, **kwargs):
+        teachers = Teacher.objects.values('id', 'name')
+        return Response(list(teachers))
+
+
+# Student
+class TeacherStudentListView(generics.ListAPIView):
+    permission_classes = [HasValidAPIKey]
+    queryset = TeacherCenterStudentCode.objects.filter(available=False)
+    serializer_class = TeacherStudentSerializer
     filter_backends = [DjangoFilterBackend,SearchFilter]
-    pagination_class = CustomPageNumberPagination
     throttle_classes = []
+    filterset_fields =['teacher']
 
 # Course
 class CourseList(generics.ListAPIView):
@@ -42,6 +51,7 @@ class CourseList(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend,SearchFilter]
     pagination_class = CustomPageNumberPagination
     throttle_classes = []
+    filterset_fields =['teacher']
 
 # Video
 class VideoList(generics.ListAPIView):
@@ -51,6 +61,7 @@ class VideoList(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend,SearchFilter]
     pagination_class = CustomPageNumberPagination
     throttle_classes = []
+    filterset_fields =['teacher']
 
 # Video Views
 class VideoViewsList(APIView):
@@ -70,7 +81,7 @@ class VideoViewsList(APIView):
         students = [sub.student for sub in subscriptions]
 
         # Get VideoViews for the video
-        video_views = VideoView.objects.filter(video=Video, student__in=students)
+        video_views = VideoView.objects.filter(video=video, student__in=students)
 
         # Map existing views by student ID for quick lookup
         views_by_student_id = {lv.student_id: lv for lv in video_views}
@@ -99,8 +110,8 @@ class VideoViewsList(APIView):
 
         # Return the paginated response
         return paginator.get_paginated_response(serializer.data)
-    
-#Course Views
+
+# Course Views
 class CourseViewsList(generics.ListAPIView):
     serializer_class = VideoViewSerializer
     permission_classes = [HasValidAPIKey]
@@ -112,6 +123,49 @@ class CourseViewsList(generics.ListAPIView):
         course_id = self.kwargs.get(self.lookup_field)
         get_course = Course.objects.get(id=course_id)
         return VideoView.objects.filter(video__unit__course=get_course)
+
+# Subscription
+class SubscribeManyUsers(APIView):
+    permission_classes = [HasValidAPIKey]
+    throttle_classes = []
+
+    def post(self, request):
+        data = request.data
+        student_codes = data.get("codes", [])
+        course = get_object_or_404(Course, id=data.get("course_id"))
+
+        if not student_codes:
+            return Response({"message": "No codes provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Chunk processing to avoid SQL limits
+        chunk_size = 5000
+        created_count = 0
+
+        for i in range(0, len(student_codes), chunk_size):
+            codes_chunk = student_codes[i : i + chunk_size]
+
+            students = Student.objects.filter(code__in=codes_chunk)
+
+            existing_ids = CourseSubscription.objects.filter(
+                student__in=students, course=course, active=True
+            ).values_list("student_id", flat=True)
+
+            new_subscriptions = [
+                CourseSubscription(student=student, course=course, active=True)
+                for student in students if student.id not in existing_ids
+            ]
+
+            if new_subscriptions:
+                CourseSubscription.objects.bulk_create(
+                    new_subscriptions, ignore_conflicts=True, batch_size=5000
+                )
+                created_count += len(new_subscriptions)
+
+        return Response(
+            {"message": f"Success, created {created_count} subscriptions"},
+            status=status.HTTP_200_OK,
+        )
+
 
 
 
@@ -136,32 +190,7 @@ class ExamResultList(generics.ListAPIView):
     def get_queryset(self):
         return Result.objects.filter(exam_id=self.kwargs.get('exam_id'),student__is_center=True)
 
-class SubscribeManyUsers(APIView):
-    permission_classes = [HasValidAPIKey]
-    throttle_classes = []
 
-    def post(self, request):
-        data = request.data
-        student_codes = data.get('codes', [])
-        course = get_object_or_404(Course, id=data.get('course_id'))
-        
-        students = Student.objects.filter(code__in=student_codes)
-        existing_subscriptions = CourseSubscription.objects.filter(
-            student__in=students, course=course, active=True
-        ).values_list('student_id', flat=True)
-
-        new_subscriptions = [
-            CourseSubscription(student=student, course=course, active=True)
-            for student in students if student.id not in existing_subscriptions
-        ]
-
-        if new_subscriptions:
-            try:
-                CourseSubscription.objects.bulk_create(new_subscriptions, ignore_conflicts=True)
-            except :
-                return Response({'message': 'Error creating subscriptions'}, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({'message': 'Success'}, status=status.HTTP_200_OK)
 
 class UnSubscribeManyUsers(APIView):
     permission_classes = [HasValidAPIKey]

@@ -440,7 +440,7 @@ class AssignGroupToUserView(APIView):
 #* < ==============================[ <- Teacher -> ]============================== > ^#
 
 class TeacherListView(generics.ListAPIView):
-    queryset = Teacher.objects.all()
+    queryset = Teacher.objects.all().order_by("-created")
     serializer_class = TeacherListSerializer
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, SearchFilter]
@@ -452,6 +452,21 @@ class TeacherListView(generics.ListAPIView):
         'teacher_course_categories__course_category',
     ]
     search_fields = ['name','user__username']
+
+
+class TeacherSimpleListView(APIView):
+    def get(self, request, *args, **kwargs):
+        course_category_id = request.GET.get('course_category_id')
+        
+        if course_category_id:
+            teacher_ids = TeacherCourseCategory.objects.filter(
+                course_category_id=course_category_id
+            ).values_list('teacher_id', flat=True)
+            queryset = Teacher.objects.filter(id__in=teacher_ids).values('id', 'name')
+        else:
+            queryset = Teacher.objects.all().values('id', 'name')
+        
+        return Response(queryset, status=status.HTTP_200_OK)
 
 
 class TeacherCreateView(generics.CreateAPIView):
@@ -491,6 +506,7 @@ class TeacherUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = TeacherUpdateSerializer
     lookup_field = 'id'
 
+
 class TeacherDeleteView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Teacher.objects.all()
@@ -513,6 +529,15 @@ class CourseCategoryListView(generics.ListAPIView):
         'name'
         ]
     search_fields = ['name']
+
+class CourseCategoryListSimpleView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        qr = CourseCategory.objects.values("id", "name",)
+
+        return Response(qr, status=status.HTTP_200_OK)
+
 
 class CourseCategoryCreateView(generics.CreateAPIView):
     queryset = CourseCategory.objects.all()
@@ -541,6 +566,7 @@ class CourseListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend,SearchFilter]
     
     filterset_fields = [
+        'teacher',
         'id',
         'year',
         'pending',
@@ -1033,12 +1059,17 @@ class CodeCourseGenerate(APIView):
             "codes": list(codes_set)
         }, status=status.HTTP_201_CREATED)
 
+
 class CodeCourseListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = CourseCode.objects.all().order_by("-created")
     serializer_class = CourseCodeSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['course','available']
+    filterset_fields = [
+        'course__teacher',
+        'course',
+        'available'
+        ]
     search_fields = ['title', 'code','student__user__username']
 
 
@@ -1120,10 +1151,11 @@ class CodeVideoListView(generics.ListAPIView):
 #* Student Code
 class GenerateTeacherCenterStudentCodes(APIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-
+    queryset = TeacherCenterStudentCode.objects.all()
+        
     def post(self, request, *args, **kwargs):
         quantity = int(request.data.get("quantity", 0))
-        teacher = get_object_or_404(Teacher, id=request.data.get("teacher"))
+        teacher = get_object_or_404(Teacher, id=request.data.get("teacher_id"))
 
         if quantity <= 0:
             return Response({"detail": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST)
@@ -1136,7 +1168,7 @@ class GenerateTeacherCenterStudentCodes(APIView):
 
         # Generate unique numeric codes
         while len(codes_set) < quantity:
-            number = '0' + ''.join(random.choices('0123456789', k=10))
+            number = '00' + ''.join(random.choices('0123456789', k=6))
             if number not in existing_codes and number not in codes_set:
                 codes_set.add(number)
                 codes_to_create.append(
@@ -1177,6 +1209,7 @@ class InvoiceListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = InvoiceFilter
     search_fields = [
+        'teacher',
         'student__user__username', 
         'sequence',
         'item_barcode',
@@ -1286,6 +1319,7 @@ class CourseSubscriptionList(generics.ListAPIView):
     filterset_fields = [
             'student__year',
             'student',
+            'course__teacher',
             'course',
             'active',
             'student__government'
@@ -1369,6 +1403,7 @@ class VideoViewList(generics.ListAPIView):
         'video',
         'video__unit__course',
     ]
+
 
 class UpdateStudentView(APIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]

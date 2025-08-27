@@ -144,11 +144,12 @@ class StudentFavoriteListSerializer(serializers.ModelSerializer):
 class StudentInvoiceSerializer(serializers.ModelSerializer):
     promo_code__code = serializers.CharField(source='promo_code.code', default=None)
     promo_code__discount_percent = serializers.CharField(source='promo_code.discount_percent', default='0')
-
+    teacher_name = serializers.CharField(source='teacher.name', default=None)
     class Meta:
         model = Invoice
         fields = [
             'id',
+            'teacher_name',
             'pay_status',
             'pay_method',
             'pay_code',

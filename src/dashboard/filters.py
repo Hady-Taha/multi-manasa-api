@@ -13,7 +13,7 @@ class InvoiceFilter(django_filters.FilterSet):
 
     class Meta:
         model = Invoice
-        fields = ['student','item_type','item_barcode', 'pay_status', 'pay_method',  'created','student__year']
+        fields = ['teacher','student','item_type','item_barcode', 'pay_status', 'pay_method',  'created','student__year']
 
 
 
@@ -77,21 +77,25 @@ class ViewSessionFilterAnalysis(django_filters.FilterSet):
 
 #* Student
 class StudentFilter(django_filters.FilterSet):
-    teacher_id = django_filters.NumberFilter(
-        field_name='coursesubscription__course__teacher__id', lookup_expr='exact'
-    )
+    teacher_id = django_filters.NumberFilter(method='filter_by_teacher')
 
     class Meta:
         model = Student
-        fields = {
-            'id': ['exact'],
-            'year': ['exact'],
-            'is_center': ['exact'],
-            'type_education': ['exact'],
-            'division': ['exact'],
-            'active': ['exact'],
-            'block': ['exact'],
-            'created': ['exact'],
-            'government': ['exact'],
-        }
+        fields = [
+            'teacher_id',
+            'id',
+            'year',
+            'type_education',
+            'division',
+            'active',
+            'block',
+            'created',
+            'government',
 
+            
+            ] 
+
+    def filter_by_teacher(self, queryset, name, value):
+        return queryset.filter(
+            coursesubscription__course__teacher_id=value
+        ).distinct()

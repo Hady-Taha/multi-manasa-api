@@ -26,6 +26,12 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
             'email',
             'government',
             'active',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
             'course_categories',
         ]
 
@@ -57,22 +63,37 @@ class TeacherCreateSerializer(serializers.ModelSerializer):
 
 class TeacherListSerializer(serializers.ModelSerializer):
     course_categories = serializers.SerializerMethodField()
+    course_count = serializers.SerializerMethodField()
+    user__username = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = Teacher
         fields = [
             'id',
+            'user__username',
             'name',
             'photo',
             'info',
             'jwt_token',
             'government',
+            'course_count',
             'active',
             'course_categories',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
+            'created',
         ]
         
     def get_course_categories(self, obj):
         categories = TeacherCourseCategory.objects.filter(teacher=obj).values('course_category__id', 'course_category__name')
         return categories
+    
+    def get_course_count(self, obj):
+        return obj.courses.count()
+    
     
 
 class TeacherUpdateSerializer(serializers.ModelSerializer):
@@ -81,7 +102,6 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
     course_categories = serializers.PrimaryKeyRelatedField(
         queryset=CourseCategory.objects.all(),
         many=True,
-        write_only=True,
         required=False
     )
 
@@ -96,6 +116,12 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
             'government',
             'active',
             'course_categories',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
         ]
 
     def update(self, instance, validated_data):
@@ -128,3 +154,4 @@ class TeacherCenterStudentCodeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherCenterStudentCode
         fields = '__all__'
+        

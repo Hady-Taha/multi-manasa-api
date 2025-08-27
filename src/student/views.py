@@ -13,6 +13,7 @@ from django.db.models import Count, Sum, Q
 from django.core.exceptions import ValidationError
 from user_agents import parse
 from view.models import VideoView,ViewSession
+from teacher.models import TeacherCenterStudentCode
 #REST LIB
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -207,6 +208,28 @@ class StudentSignCenterCodeView(APIView):
             return Response({"error":"This Code Does Not Exist"},status=status.HTTP_404_NOT_FOUND)
 
         return Response(status=status.HTTP_201_CREATED)
+
+
+
+class StudentSingCenterTeacher(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self,request,*args, **kwargs):
+        code = request.data.get("code")
+        student = request.user.student
+        try:
+            code = TeacherCenterStudentCode.objects.get(code=code,available=True)
+            code.available = False
+            code.student = student
+            code.save()
+        
+        except TeacherCenterStudentCode.DoesNotExist:
+            return Response({"error":"the code does not exist or not available"},status=status.HTTP_400_BAD_REQUEST)
+            
+        return Response(status=status.HTTP_200_OK)
+
+
+
 
 
 #* < ==============================[ <- Reset Password [Views]  -> ]============================== > ^#
@@ -449,6 +472,8 @@ class InvoicesListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = [
         'sequence',
+        'item_barcode',
+        'pay_status',
         ]
     
     def get_queryset(self):

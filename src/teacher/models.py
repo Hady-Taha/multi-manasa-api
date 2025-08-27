@@ -11,6 +11,12 @@ class Teacher(models.Model):
     government = models.CharField(max_length=100)
     jwt_token = models.CharField(max_length=1000, blank=True, null=True)
     active = models.BooleanField(default=False)
+    facebook_url = models.URLField(blank=True, null=True)
+    tiktok_url = models.URLField(blank=True, null=True)
+    instagram_url = models.URLField(blank=True, null=True)
+    youtube_url = models.URLField(blank=True, null=True)
+    whatsapp = models.CharField(max_length=11,blank=True, null=True)
+    website_url = models.URLField(blank=True, null=True)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
     def __str__(self):

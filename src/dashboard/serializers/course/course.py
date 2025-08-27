@@ -10,6 +10,8 @@ class CourseCategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ListCourseSerializer(serializers.ModelSerializer):
+    teacher_name = serializers.CharField(source='teacher.name')
+    teacher_photo = serializers.ImageField(source="teacher.photo")
     units_count = serializers.SerializerMethodField()
     videos_count = serializers.SerializerMethodField()
     files_count = serializers.SerializerMethodField()
@@ -21,6 +23,9 @@ class ListCourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = [
             'id',
+            'teacher',
+            'teacher_name',
+            'teacher_photo',
             'name',
             'description',
             'price',
@@ -65,6 +70,7 @@ class CreateCourseSerializers(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields=[
+            'teacher',
             'name',
             'can_buy',
             'description',

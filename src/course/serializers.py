@@ -1,12 +1,13 @@
 from rest_framework import serializers
 from subscription.models import CourseSubscription,VideoSubscription
-from teacher.models import TeacherCourseCategory
+from teacher.models import TeacherCourseCategory,TeacherCenterStudentCode
 from .models import *
 
 #* < ==============================[ <- Teacher -> ]============================== > ^#
 
 class TeacherListSerializer(serializers.ModelSerializer):
     course_categories = serializers.SerializerMethodField()
+    student_is_center = serializers.SerializerMethodField()
     class Meta:
         model = Teacher
         fields = [
@@ -17,12 +18,29 @@ class TeacherListSerializer(serializers.ModelSerializer):
             'info',
             'government',
             'course_categories',
+            'facebook_url',
+            'tiktok_url',
+            'instagram_url',
+            'youtube_url',
+            'whatsapp',
+            'website_url',
+            'student_is_center',
         ]
         
     def get_course_categories(self, obj):
         categories = TeacherCourseCategory.objects.filter(teacher=obj).values('course_category__id', 'course_category__name')
         return categories
 
+    def get_student_is_center(self, obj):
+        request = self.context.get('request')
+        
+        if request and hasattr(request.user, 'student'):
+            student = request.user.student
+            center = TeacherCenterStudentCode.objects.filter(teacher=obj,student=student,available=False).exists()
+            
+            return center
+        return False
+    
 
 #* < ==============================[ <- Category -> ]============================== > ^#
 

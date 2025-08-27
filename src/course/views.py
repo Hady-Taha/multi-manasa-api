@@ -14,7 +14,7 @@ from rest_framework import generics
 from exam.serializers import ExamSerializer
 from .models import CourseCategory,Course,Unit
 from .serializers import TeacherListSerializer,CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
-from teacher.models import Teacher
+from teacher.models import Teacher,TeacherCenterStudentCode,TeacherCourseCategory
 
 
 #* < ==============================[ <- Teacher -> ]============================== > ^#
@@ -22,17 +22,26 @@ from teacher.models import Teacher
 class TeacherListView(generics.ListAPIView):
     serializer_class = TeacherListSerializer
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['name']
+    filterset_fields = ['name','id']
     search_fields = ['name']
 
     def get_queryset(self):
         return Teacher.objects.filter(active=True)
 
 
-class TeacherSimpleListView(generics.ListAPIView):
-    def get(self,request,*args, ** kwargs):
-        qr = Teacher.objects.all().values("id",'name')
-        return Response(qr,status=status.HTTP_200_OK)
+class TeacherSimpleListView(APIView):
+    def get(self, request, *args, **kwargs):
+        course_category_id = request.GET.get('course_category_id')
+        
+        if course_category_id:
+            teacher_ids = TeacherCourseCategory.objects.filter(
+                course_category_id=course_category_id
+            ).values_list('teacher_id', flat=True)
+            queryset = Teacher.objects.filter(id__in=teacher_ids).values('id', 'name')
+        else:
+            queryset = Teacher.objects.all().values('id', 'name')
+        
+        return Response(queryset, status=status.HTTP_200_OK)
 
 
 #* < ==============================[ <- Categories -> ]============================== > ^#
@@ -87,6 +96,20 @@ class CourseListView(generics.ListAPIView):
         return context
 
 
+class CourseCenterListView(generics.ListAPIView):
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['teacher','category']
+
+    def get_queryset(self):
+        student = self.request.user.student
+        teachers = TeacherCenterStudentCode.objects.filter(student=student).values_list("teacher")
+        queryset = Course.objects.filter(is_center=True,year=student.year.id,teacher__in=teachers)
+        return queryset
+
+
+
 class CourseDetailView(generics.RetrieveAPIView):
     queryset = Course.objects.all() 
     serializer_class = CourseSerializer
@@ -117,6 +140,9 @@ class CourseDetailView(generics.RetrieveAPIView):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+
+
 
 
 #* < ==============================[ <- Unit -> ]============================== > ^#
