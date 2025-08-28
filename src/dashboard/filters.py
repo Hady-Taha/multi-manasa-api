@@ -78,7 +78,7 @@ class ViewSessionFilterAnalysis(django_filters.FilterSet):
 #* Student
 class StudentFilter(django_filters.FilterSet):
     teacher_id = django_filters.NumberFilter(method='filter_by_teacher')
-
+    teacher_center_id = django_filters.NumberFilter(method='filter_by_teacher')
     class Meta:
         model = Student
         fields = [
@@ -98,4 +98,11 @@ class StudentFilter(django_filters.FilterSet):
     def filter_by_teacher(self, queryset, name, value):
         return queryset.filter(
             coursesubscription__course__teacher_id=value
+        ).distinct()
+        
+        
+    def filter_by_teacher_center(self, queryset, name, value):
+        # filter students by TeacherCenterStudentCode → teacher
+        return queryset.filter(
+            teachercenterstudentcode__teacher_id=value
         ).distinct()
