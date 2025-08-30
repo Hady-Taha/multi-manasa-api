@@ -167,8 +167,6 @@ class SubscribeManyUsers(APIView):
         )
 
 
-
-
 # Exam
 class ExamList(generics.ListAPIView):
     permission_classes = [HasValidAPIKey]
@@ -179,6 +177,7 @@ class ExamList(generics.ListAPIView):
 
     def get_queryset(self):
         return Exam.objects.filter(Q(unit__course__is_center=True) | Q(video__unit__course__is_center=True))
+
 
 class ExamResultList(generics.ListAPIView):
     permission_classes = [HasValidAPIKey]
