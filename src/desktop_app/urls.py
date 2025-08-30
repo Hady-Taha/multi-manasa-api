@@ -14,7 +14,7 @@ urlpatterns = [
     # Subscription
     path('subscribe-many-users/', views.SubscribeManyUsers.as_view(), name='subscribe-many-users'),
     
-    path('exam-list/', views.ExamList.as_view(), name='exam-list'),
+    path('exam/list/', views.ExamList.as_view(), name='exam-list'),
     path('exam-results/<int:exam_id>/', views.ExamResultList.as_view(), name='exam-results-list'),
     path('unsubscribe-many-users/', views.UnSubscribeManyUsers.as_view(), name='unsubscribe-many-users'),
     path('submit-result-exam/', views.SubmitResultCenterExam.as_view(), name='unsubscribe-many-users'),

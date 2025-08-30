@@ -28,8 +28,6 @@ from exam.models import (
     RelatedToChoices, Result, EssaySubmission, ResultTrial, Submission, 
     TempExamAllowedTimes, VideoQuiz
 )
-from .serializers.exam.exam import *
-
 from subscription.models import CourseSubscription
 from .models import *
 from .serializers.profile.profile import *

@@ -23,6 +23,7 @@ from .serializers import *
 from core.permissions import HasValidAPIKey
 from teacher.models import TeacherCenterStudentCode,Teacher
 from .models import *
+from .filters import *
 from datetime import datetime 
 # Create your views here.
 
@@ -171,13 +172,16 @@ class SubscribeManyUsers(APIView):
 class ExamList(generics.ListAPIView):
     permission_classes = [HasValidAPIKey]
     serializer_class = ExamSerializer
-    filter_backends = [DjangoFilterBackend,SearchFilter]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_class = ExamFilter   # <-- add this
     pagination_class = CustomPageNumberPagination
     throttle_classes = []
 
     def get_queryset(self):
-        return Exam.objects.filter(Q(unit__course__is_center=True) | Q(video__unit__course__is_center=True))
-
+        return Exam.objects.filter(
+            Q(unit__course__is_center=True) |
+            Q(video__unit__course__is_center=True)
+        )
 
 class ExamResultList(generics.ListAPIView):
     permission_classes = [HasValidAPIKey]
