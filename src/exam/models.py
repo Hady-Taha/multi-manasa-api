@@ -263,6 +263,20 @@ class Submission(models.Model):
     is_solved = models.BooleanField(default=True)
     result_trial = models.ForeignKey('ResultTrial', on_delete=models.SET_NULL, related_name='submissions', null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            # For efficient lookups by student and exam combination
+            models.Index(fields=['student', 'exam']),
+            # For result trial related queries
+            models.Index(fields=['result_trial', 'is_correct']),
+            # For question performance analysis
+            models.Index(fields=['question', 'is_correct']),
+            # For student performance tracking
+            models.Index(fields=['student', 'is_correct', 'is_solved']),
+        ]
+        # Ensure unique submission per student, exam, question, and result_trial
+        unique_together = [['student', 'exam', 'question', 'result_trial']]
+
     def save(self, *args, **kwargs):
         # Automatically check if the answer is correct
         if self.selected_answer:
@@ -286,8 +300,14 @@ class EssaySubmission(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     result_trial = models.ForeignKey('ResultTrial', on_delete=models.CASCADE, related_name='essay_submissions', null=True, blank=True)
 
+    class Meta:
+        # Ensure unique essay submission per student, exam, question, and result_trial
+        unique_together = [['student', 'exam', 'question', 'result_trial']]
+
     def __str__(self):
         return f" {self.result_trial} | {self.question.text} | Score: {self.score}"
+
+
 
 class Result(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
