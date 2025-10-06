@@ -2863,7 +2863,23 @@ class ResultListView(generics.ListAPIView):
                 COALESCE(sub_incorrect.count, 0) as incorrect_questions_count,
                 COALESCE(sub_unsolved.count, 0) as unsolved_questions_count
             FROM exam_result er
-            LEFT JOIN exam_resulttrial ert ON ert.result_id = er.id AND ert.trial = er.trial
+            LEFT JOIN (
+                SELECT 
+                    result_id, trial, score, exam_score, student_started_exam_at, 
+                    student_submitted_exam_at, submit_type, id
+                FROM exam_resulttrial ert1
+                WHERE ert1.score = (
+                    SELECT MAX(ert2.score) 
+                    FROM exam_resulttrial ert2 
+                    WHERE ert2.result_id = ert1.result_id
+                )
+                AND ert1.trial = (
+                    SELECT MAX(ert3.trial)
+                    FROM exam_resulttrial ert3
+                    WHERE ert3.result_id = ert1.result_id 
+                    AND ert3.score = ert1.score
+                )
+            ) ert ON ert.result_id = er.id
             LEFT JOIN exam_exam e ON er.exam_id = e.id
             LEFT JOIN student_student s ON er.student_id = s.id
             LEFT JOIN auth_user u ON s.user_id = u.id
@@ -2892,7 +2908,6 @@ class ResultListView(generics.ListAPIView):
                 GROUP BY result_trial_id
             ) sub_unsolved ON sub_unsolved.result_trial_id = ert.id
         '''
-
         # Add filters
         where_conditions = []
         params = []
@@ -3754,6 +3769,7 @@ class CopyExamView(APIView):
                 allow_show_results_at=original_exam.allow_show_results_at,
                 allow_show_answers_at=original_exam.allow_show_answers_at,
                 is_depends=original_exam.is_depends,
+                show_questions_in_random=original_exam.show_questions_in_random,
             )
 
             # Copy exam questions
