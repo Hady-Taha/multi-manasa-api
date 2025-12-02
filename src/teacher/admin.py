@@ -17,5 +17,5 @@ class TeacherAdmin(admin.ModelAdmin):
 
 @admin.register(TeacherCourseCategory)
 class TeacherCourseCategoryAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name']  # adjust as per your model
+    list_display = ['id']  # adjust as per your model
     search_fields = ['name']
