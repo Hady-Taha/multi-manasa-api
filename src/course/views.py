@@ -78,7 +78,7 @@ class CourseListView(generics.ListAPIView):
             year = student.year
             filters = {
                 'year': year,
-                'is_center': False if not student.is_center else True
+                'is_center': False
                 }
 
             queryset = Course.objects.filter(
@@ -125,7 +125,7 @@ class CourseDetailView(generics.RetrieveAPIView):
             year = student.year
             filters = {
                 'year': year,
-                'is_center': False if not student.is_center else True
+                #'is_center': TeacherCenterStudentCode.objects.filter(student=student).exists()
                 }
 
             queryset = Course.objects.filter(
@@ -140,6 +140,9 @@ class CourseDetailView(generics.RetrieveAPIView):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+
+
 
 
 

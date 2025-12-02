@@ -1,6 +1,6 @@
 from django.conf import settings
 from rest_framework import status
-from django.db.models import OuterRef, Subquery, IntegerField, Value, F,Q
+from django.db.models import OuterRef, Subquery, IntegerField, Value, F,Q,Max
 from django.db.models.functions import Coalesce
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -191,7 +191,13 @@ class ExamResultList(generics.ListAPIView):
     throttle_classes = []
 
     def get_queryset(self):
-        return Result.objects.filter(exam_id=self.kwargs.get('exam_id'),student__is_center=True)
+        return (
+            Result.objects.filter(exam_id=self.kwargs.get('exam_id'))
+            .annotate(
+                latest_submission=Max("trials__student_submitted_exam_at")
+            )
+            .filter(latest_submission__isnull=False)
+        )
 
 
 

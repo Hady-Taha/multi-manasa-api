@@ -37,7 +37,7 @@ from rest_framework.filters import SearchFilter,OrderingFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser
-from core.permissions import CustomDjangoModelPermissions,IsSuperUser,IsTeacher,CustomDjangoModelPermissionsOrIsTeacher
+from core.permissions import CustomDjangoModelPermissions,IsSuperUser
 from core.pagination import CustomPageNumberPagination
 from .filters import *
 from .utils import copy_unit_to_course
@@ -86,21 +86,22 @@ class StudentsListView(generics.ListAPIView):
         'user__username',
         'parent_phone',
     ]
-
-
-    ordering_fields = [
+    filterset_fields=[
         'id',
         'name',
         'created',
         'year',
         'division',
+        'government',
         'block',
         'type_education',
     ]
 
 
+
+
 class StudentUpdateView(generics.UpdateAPIView):
-    ppermission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Student.objects.all()
     serializer_class = UpdateStudentSerializer
     lookup_field = 'id'
@@ -265,6 +266,29 @@ class StudentDeviceDeleteView(generics.DestroyAPIView):
     queryset = StudentDevice.objects.all()
     lookup_field = 'id'  # Adjust if your lookup is by another field
     serializer_class = StudentDeviceSerializer
+
+
+
+
+class StudentExcludeTeacherListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    serializer_class = StudentSerializer
+
+    def get_queryset(self):
+        teacher_id = self.kwargs.get('teacher_id')  
+        
+        student_type = self.request.query_params.get('student_type')
+        if student_type == 'center':
+            teacher = TeacherCenterStudentCode.objects.filter(teacher_id=teacher_id).values_list('student_id', flat=True)
+            queryset = Student.objects.filter(id__in=teacher)
+        elif student_type == 'online':
+            course_teacher_online = Course.objects.filter(teacher_id=teacher_id, is_center=False).values_list('id', flat=True)
+            student_enroll = TeacherCenterStudentCode.objects.filter(teacher_id=teacher_id,available=False).values_list('student_id', flat=True)    
+            student_ids = CourseSubscription.objects.filter(course_id__in=course_teacher_online).values_list('student_id', flat=True)
+            queryset = Student.objects.filter(id__in=student_ids).exclude(id__in=student_enroll)
+        else:
+            queryset = Student.objects.none()  
+        return queryset
 
 #ap:Staff
 #* < ==============================[ <- Staff -> ]============================== > *#
@@ -452,6 +476,20 @@ class TeacherListView(generics.ListAPIView):
         'teacher_course_categories__course_category',
     ]
     search_fields = ['name','user__username']
+
+
+class TeacherStudentListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated,CustomDjangoModelPermissions]
+    serializer_class = TeacherStudentSerializer
+    queryset = TeacherCenterStudentCode.objects.filter(student__isnull=False)
+    filter_backends = [DjangoFilterBackend,SearchFilter,OrderingFilter]
+    filterset_fields = [
+        'student__year',
+        'student__type_education',
+        'student__division',
+        'code',
+        'teacher',
+    ]
 
 
 class TeacherSimpleListView(APIView):
@@ -834,6 +872,20 @@ class UnitListSimple(APIView):
 #* < ==============================[ <- Content -> ]============================== > *#
 
 #* Video
+
+
+#* Video
+class AllVideoListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    queryset = Video.objects.all().order_by("-created")
+    serializer_class = ListVideoSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['unit', 'pending','unit__course']  
+    search_fields = ['name', 'description', 'unit__course__name']
+
+
+    
+
 class VideoListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = ListVideoSerializer
@@ -1313,6 +1365,7 @@ class CourseSubscriptionList(generics.ListAPIView):
         'student__name',
         'student__user__username',
         'course__name',
+
         'invoice__sequence',
         ]
 
@@ -1884,7 +1937,7 @@ class NotificationCreateView(APIView):
 class ExamListCreateView(generics.ListCreateAPIView):
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, OrderingFilter,SearchFilter]
     filterset_fields = ['related_to', 'is_active','course' , 'course__teacher' ,'unit', 'video', 'type','created','start','end','allow_show_results_at']
     search_fields = ['title', 'description','course__name' , 'course__teacher__name', 'unit__name', 'video__name']
@@ -1892,41 +1945,30 @@ class ExamListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
-        user = self.request.user
 
-        # If the requesting user has a Teacher profile, restrict exams to that teacher's courses by default
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            # fallback if reverse relation name is different
-            teacher = Teacher.objects.filter(user=user).first()
-
-        if teacher:
-            teacher_q = Q(course__teacher=teacher) | Q(unit__course__teacher=teacher) | Q(video__unit__course__teacher=teacher)
-            queryset = queryset.filter(teacher_q)
-
-        # Filter by status
-        status_param = self.request.query_params.get("status")
-        if status_param:
-            now_dt = timezone.now()
-            if status_param == "soon":
-                queryset = queryset.filter(start__gt=now_dt)
-            elif status_param == "active":
-                queryset = queryset.filter(start__lte=now_dt, end__gte=now_dt)
-            elif status_param == "finished":
-                queryset = queryset.filter(end__lt=now_dt)
+        # Filter by status (existing logic)
+        status = self.request.query_params.get("status")
+        if status:
+            now = timezone.now()
+            if status == "soon":
+                queryset = queryset.filter(start__gt=now)
+            elif status == "active":
+                queryset = queryset.filter(start__lte=now, end__gte=now)
+            elif status == "finished":
+                queryset = queryset.filter(end__lt=now)
 
         # Filter by related_course
         related_course = self.request.query_params.get("related_course")
         if related_course:
             queryset = queryset.filter(
-                Q(unit__course_id=related_course) | Q(video__unit__course_id=related_course)
+                models.Q(unit__course_id=related_course) | models.Q(video__unit__course_id=related_course)
             )
 
         # Filter by related_year
         related_year = self.request.query_params.get("related_year")
         if related_year:
             queryset = queryset.filter(
-                Q(unit__course__year_id=related_year) | Q(video__unit__course__year_id=related_year)
+                models.Q(unit__course__year_id=related_year) | models.Q(video__unit__course__year_id=related_year)
             )
 
         return queryset
@@ -1947,42 +1989,25 @@ class ExamListCreateView(generics.ListCreateAPIView):
 class ExamDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Exam.objects.all()
     serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
 
 #^ QuestionCategory 
 class QuestionCategoryListCreateView(generics.ListCreateAPIView):
     queryset = QuestionCategory.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = QuestionCategorySerializer
     filterset_fields = ['course']
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-
-        # If the requesting user has a Teacher profile, restrict to that teacher's courses
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            # fallback if reverse relation name is different
-            teacher = Teacher.objects.filter(user=user).first()
-
-        if teacher:
-            # Filter question categories that belong to courses taught by this teacher
-            queryset = queryset.filter(course__teacher=teacher)
-
-        return queryset
-
 
 
 class QuestionCategoryRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = QuestionCategory.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = QuestionCategorySerializer
 
 #^ Question , Answer
 class QuestionListCreateView(generics.ListCreateAPIView):
     queryset = Question.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = QuestionSerializer
     parser_classes = (MultiPartParser, FormParser)
     filter_backends = (DjangoFilterBackend, SearchFilter)
@@ -1998,29 +2023,9 @@ class QuestionListCreateView(generics.ListCreateAPIView):
     }
     search_fields = ['text', 'answers__text']
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        user = self.request.user
-
-        # If the requesting user has a Teacher profile, restrict to that teacher's courses
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            # fallback if reverse relation name is different
-            teacher = Teacher.objects.filter(user=user).first()
-
-        if teacher:
-            # Create a Q object to filter questions related to this teacher's courses
-            teacher_q = Q(course__teacher=teacher) | \
-                       Q(category__course__teacher=teacher) | \
-                       Q(unit__course__teacher=teacher) | \
-                       Q(video__unit__course__teacher=teacher)
-            queryset = queryset.filter(teacher_q)
-
-        return queryset.distinct()  # Using distinct() to avoid duplicates from multiple Q conditions
-
     def create(self, request, *args, **kwargs):
-        # Your existing create method remains unchanged
         try:
+            # Extract basic question data
             question_data = {
                 'text': request.data.get('text'),
                 'points': request.data.get('points'),
@@ -2028,17 +2033,21 @@ class QuestionListCreateView(generics.ListCreateAPIView):
                 'category': request.data.get('category'),
                 'video': request.data.get('video'),
                 'unit': request.data.get('unit'),
+                # 'is_active': request.data.get('is_active') == 'true',
                 'question_type': request.data.get('question_type'),
                 'comment': request.data.get('comment'),
             }
 
+            # Handle question image
             if 'image' in request.FILES:
                 question_data['image'] = request.FILES.get('image')
 
+            # Create question
             question_serializer = self.get_serializer(data=question_data)
             question_serializer.is_valid(raise_exception=True)
             question = question_serializer.save()
 
+            # Process answers
             index = 0
             while f'answers[{index}][text]' in request.data:
                 answer_data = {
@@ -2046,37 +2055,42 @@ class QuestionListCreateView(generics.ListCreateAPIView):
                     'text': request.data[f'answers[{index}][text]'],
                     'is_correct': request.data.get(f'answers[{index}][is_correct]', '').lower() == 'true',
                 }
-
+                
+                # Handle answer image
                 image_key = f'answers[{index}][image]'
                 if image_key in request.FILES:
                     answer_data['image'] = request.FILES[image_key]
-
+                
                 answer_serializer = AnswerSerializer(data=answer_data)
                 if answer_serializer.is_valid():
                     answer_serializer.save()
                 else:
+                    # If answer creation fails, delete the question and return error
                     question.delete()
                     return Response(
                         answer_serializer.errors,
                         status=status.HTTP_400_BAD_REQUEST
                     )
+                
                 index += 1
 
+            # Return the created question with its answers
             return Response(
                 self.get_serializer(question).data,
                 status=status.HTTP_201_CREATED
             )
-
+            
         except Exception as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+
 class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     parser_classes = (MultiPartParser, FormParser)
 
     def patch(self, request, *args, **kwargs):
@@ -2151,7 +2165,7 @@ class BulkQuestionCreateView(generics.CreateAPIView):
     serializer_class = QuestionSerializer
     parser_classes = (MultiPartParser, FormParser)
 
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
 
     def create(self, request, *args, **kwargs):
         try:
@@ -2254,7 +2268,7 @@ class BulkQuestionCreateView(generics.CreateAPIView):
 class AnswerListCreateView(generics.ListCreateAPIView):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['question']
 
@@ -2262,7 +2276,7 @@ class AnswerListCreateView(generics.ListCreateAPIView):
 class AnswerRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Answer.objects.all()
     serializer_class = AnswerSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
 
 #^ Essay Submission
 class EssaySubmissionListView(generics.ListAPIView):
@@ -2370,7 +2384,7 @@ class QuestionCountView(APIView):
     Endpoint to get the count of questions with details.
     Allows filtering by is_active, difficulty, category, video, unit, course, and question_type.
     """
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Question.objects.all()
 
     def get(self, request, *args, **kwargs):
@@ -2429,7 +2443,7 @@ class QuestionCountView(APIView):
 
 #^ Exam Questions
 class GetExamQuestions(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Exam.objects.all()
 
     def get(self, request, exam_id):
@@ -2457,7 +2471,7 @@ class GetExamQuestions(APIView):
 
 #^ add questions to an exam (manual and bank)
 class AddBankExamQuestionsView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     parser_classes = [JSONParser]  # Use JSONParser to parse JSON data
     queryset = Question.objects.all()
 
@@ -2509,7 +2523,7 @@ class AddBankExamQuestionsView(APIView):
 
 
 class AddManualExamQuestionsView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     parser_classes = [MultiPartParser, FormParser]
     queryset = Question.objects.all()
     def post(self, request, exam_id):
@@ -2554,7 +2568,7 @@ class AddManualExamQuestionsView(APIView):
 
 
 class RemoveExamQuestion(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Question.objects.all()
     def delete(self, request, exam_id, question_id):
         # Fetch the exam
@@ -2579,7 +2593,7 @@ class RemoveExamQuestion(APIView):
 
 #^ add questions to RandomExamBank (the small bank of questions selected for a random exam to create the models of them)
 class GetRandomExamBank(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = ExamModel.objects.all()
     def get(self, request, exam_id):
         # Fetch the exam
@@ -2600,7 +2614,7 @@ class GetRandomExamBank(APIView):
 
 
 class AddToRandomExamBank(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = ExamModel.objects.all()
     def post(self, request, exam_id):
         # Fetch the exam
@@ -2635,19 +2649,19 @@ class AddToRandomExamBank(APIView):
 #^ ExamModels
 class ExamModelListCreateView(generics.ListCreateAPIView):
     queryset = ExamModel.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = ExamModelSerializer
     filterset_fields = ['is_active', 'exam']
 
 
 class ExamModelRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = ExamModel.objects.all()
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = ExamModelSerializer
 
 #^ get examModel questions (he already added questions , to be reviewed by admin )
 class GetExamModelQuestions(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = ExamModel.objects.all()
     def get(self, request, exam_model_id):
         # Fetch the exam model
@@ -2672,7 +2686,7 @@ class GetExamModelQuestions(APIView):
 
 #^ Remove Question from an ExamModel
 class RemoveQuestionFromExamModel(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = ExamModel.objects.all()
     def delete(self, request, exam_model_id, question_id):
         try:
@@ -2691,7 +2705,7 @@ class RemoveQuestionFromExamModel(APIView):
 
 #^ get : gets questions (randomly) from the RandomExamBank related to that exam so the teacher reviews them and modify or delete some (using other endpoints we already have)
 class SuggestQuestionsForModel(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = ExamModel.objects.all()
     def get_random_questions(self, exam: Exam, related_questions: QuerySet) -> List[Question]:
         """
@@ -2779,7 +2793,7 @@ class SuggestQuestionsForModel(APIView):
 
 # post : receives the reviewed suggestions and modified questions to store them in the ExamModelQuestion )
 class AddQuestionsToModel(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = ExamModel.objects.all()
     def post(self, request, exam_id, exam_model_id):
         try:
@@ -2832,18 +2846,14 @@ class AddQuestionsToModel(APIView):
 
 
 #^ Results
-from django.db import connection
-
 class ResultListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = ResultSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
-    pagination_class = CustomPageNumberPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = {
         'student': ['exact'],
         'exam': ['exact'],
         'exam__unit': ['exact'],
-        'exam__course': ['exact'],
         'exam__video': ['exact'],
         'exam__related_to': ['exact'],
     }
@@ -2854,238 +2864,55 @@ class ResultListView(generics.ListAPIView):
         'exam__description'
     ]
 
-    def list(self, request, *args, **kwargs):
-        """Override list method to handle custom queryset"""
-        data = self.get_custom_data()
+    def get_queryset(self):
+        submitted = self.request.query_params.get('submitted', None)
+        
+        # Base queryset - remove the initial .distinct() from here
+        queryset = Result.objects.select_related(
+            'exam', 'student', 'exam_model'
+        ).prefetch_related(
+            Prefetch('trials', queryset=ResultTrial.objects.order_by('-trial')),
+            'exam__submissions',
+            'exam__exam_questions',
+            'exam_model__exam_model_questions'
+        ).annotate(
+            total_questions=Count('exam__exam_questions'),
+            is_allowed_to_show_result=Case(
+                When(exam__allow_show_results_at__lte=timezone.now(), then=True),
+                default=False,
+                output_field=BooleanField()
+            )
+        )
 
-        # Handle pagination
-        page = self.paginate_queryset(data)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(data, many=True)
-        return Response(serializer.data)
-
-    def get_custom_data(self):
-        # Get the teacher for the current user
-        user = self.request.user
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            teacher = Teacher.objects.filter(user=user).first()
-
-        # Your existing SQL query logic
-        base_sql = '''
-            SELECT DISTINCT
-                er.id,
-                er.exam_id,
-                er.student_id,
-                er.trial,
-                er.exam_model_id,
-                COALESCE(ert.score, 0) as student_score,
-                COALESCE(ert.exam_score, 0) as exam_score,
-                ert.student_started_exam_at,
-                ert.student_submitted_exam_at,
-                ert.submit_type,
-                e.number_of_allowed_trials,
-                e.allow_show_results_at,
-                e.title as exam_title,
-                e.description as exam_description,
-                s.name as student_name,
-                s.parent_phone,
-                s.jwt_token,
-                u.username as student_phone,
-                COALESCE(sub_correct.count, 0) as correct_questions_count,
-                COALESCE(sub_incorrect.count, 0) as incorrect_questions_count,
-                COALESCE(sub_unsolved.count, 0) as unsolved_questions_count
-            FROM exam_result er
-            LEFT JOIN exam_resulttrial ert ON ert.result_id = er.id AND ert.trial = er.trial
-            LEFT JOIN exam_exam e ON er.exam_id = e.id
-            LEFT JOIN student_student s ON er.student_id = s.id
-            LEFT JOIN auth_user u ON s.user_id = u.id
-            LEFT JOIN (
-                SELECT
-                    result_trial_id,
-                    COUNT(*) as count
-                FROM exam_submission
-                WHERE is_correct = true
-                GROUP BY result_trial_id
-            ) sub_correct ON sub_correct.result_trial_id = ert.id
-            LEFT JOIN (
-                SELECT
-                    result_trial_id,
-                    COUNT(*) as count
-                FROM exam_submission
-                WHERE is_correct = false
-                GROUP BY result_trial_id
-            ) sub_incorrect ON sub_incorrect.result_trial_id = ert.id
-            LEFT JOIN (
-                SELECT
-                    result_trial_id,
-                    COUNT(*) as count
-                FROM exam_submission
-                WHERE is_solved = false
-                GROUP BY result_trial_id
-            ) sub_unsolved ON sub_unsolved.result_trial_id = ert.id
-        '''
-
-        # Add filters
-        where_conditions = []
-        params = []
-
-        # Add teacher filter if the user is a teacher
-        if teacher:
-            where_conditions.append('''
-                (e.course_id IN (SELECT course_id FROM teacher_teacher WHERE id = %s) OR
-                 e.unit_id IN (SELECT unit_id FROM course_unit WHERE course_id IN (SELECT course_id FROM teacher_teacher WHERE id = %s)) OR
-                 e.video_id IN (SELECT video_id FROM course_video WHERE unit_id IN (SELECT unit_id FROM course_unit WHERE course_id IN (SELECT course_id FROM teacher_teacher WHERE id = %s))))
-            ''')
-            params.extend([teacher.id, teacher.id, teacher.id])
-
-        # Handle basic filters
-        student_id = self.request.query_params.get('student')
-        if student_id:
-            where_conditions.append('er.student_id = %s')
-            params.append(student_id)
-        exam_id = self.request.query_params.get('exam')
-        if exam_id:
-            where_conditions.append('er.exam_id = %s')
-            params.append(exam_id)
-        # Handle exam related filters
-        exam_unit = self.request.query_params.get('exam__unit')
-        if exam_unit:
-            where_conditions.append('e.unit_id = %s')
-            params.append(exam_unit)
-        exam_course = self.request.query_params.get('exam__course')
-        if exam_course:
-            where_conditions.append('e.course_id = %s')
-            params.append(exam_course)
-        exam_video = self.request.query_params.get('exam__video')
-        if exam_video:
-            where_conditions.append('e.video_id = %s')
-            params.append(exam_video)
-        exam_related_to = self.request.query_params.get('exam__related_to')
-        if exam_related_to:
-            where_conditions.append('e.related_to = %s')
-            params.append(exam_related_to)
-        # Handle submitted filter
-        submitted = self.request.query_params.get('submitted')
-        if submitted:
+        # Only apply the complex filtering if submitted parameter is provided
+        if submitted is not None:
             submitted = submitted.lower()
             if submitted in ('true', '1'):
-                where_conditions.append('ert.student_submitted_exam_at IS NOT NULL')
+                # Get results where the active trial is submitted
+                queryset = queryset.filter(
+                    Q(trials__trial=F('trial'), trials__student_submitted_exam_at__isnull=False) |
+                    Q(
+                        trials__trial=F('trial') - 1,
+                        trials__student_submitted_exam_at__isnull=False
+                    ) & ~Q(trials__trial=F('trial'), trials__student_submitted_exam_at__isnull=False)
+                )
             elif submitted in ('false', '0'):
-                where_conditions.append('ert.student_submitted_exam_at IS NULL')
-        # Handle score filters
-        score_from = self.request.query_params.get('score_from')
-        if score_from:
-            try:
-                score_from = float(score_from)
-                where_conditions.append('COALESCE(ert.score, 0) >= %s')
-                params.append(score_from)
-            except (ValueError, TypeError):
-                pass
-        score_to = self.request.query_params.get('score_to')
-        if score_to:
-            try:
-                score_to = float(score_to)
-                where_conditions.append('COALESCE(ert.score, 0) <= %s')
-                params.append(score_to)
-            except (ValueError, TypeError):
-                pass
-        # Handle search
-        search = self.request.query_params.get('search')
-        if search:
-            search_condition = '''(
-                s.name ILIKE %s OR
-                u.username ILIKE %s OR
-                e.title ILIKE %s OR
-                e.description ILIKE %s
-            )'''
-            where_conditions.append(search_condition)
-            search_param = f'%{search}%'
-            params.extend([search_param, search_param, search_param, search_param])
-
-        # Add WHERE clause if we have conditions
-        if where_conditions:
-            base_sql += ' WHERE ' + ' AND '.join(where_conditions)
-
-        # Handle ordering
-        ordering = self.request.query_params.get('ordering', '-student_score')
-        if ordering == 'student_score':
-            base_sql += ' ORDER BY student_score ASC'
-        elif ordering == '-student_score':
-            base_sql += ' ORDER BY student_score DESC'
-        elif ordering == 'exam_score':
-            base_sql += ' ORDER BY exam_score ASC'
-        elif ordering == '-exam_score':
-            base_sql += ' ORDER BY exam_score DESC'
-        elif ordering == 'student__name':
-            base_sql += ' ORDER BY student_name ASC'
-        elif ordering == '-student__name':
-            base_sql += ' ORDER BY student_name DESC'
-        else:
-            base_sql += ' ORDER BY student_score DESC'
-
-        # Execute the query
-        with connection.cursor() as cursor:
-            cursor.execute(base_sql, params)
-            columns = [col[0] for col in cursor.description]
-            results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-        # Convert to Result objects for compatibility
-        result_objects = []
-        for row in results:
-            result = Result(
-                id=row['id'],
-                exam_id=row['exam_id'],
-                student_id=row['student_id'],
-                trial=row['trial']
-            )
-            # Add the calculated fields as attributes
-            result.student_score = row['student_score']
-            result.exam_score = row['exam_score']
-
-            # Handle timezone-aware datetime fields
-            result.student_started_exam_at = self._make_timezone_aware(row['student_started_exam_at'])
-            result.student_submitted_exam_at = self._make_timezone_aware(row['student_submitted_exam_at'])
-            result.allow_show_results_at = self._make_timezone_aware(row['allow_show_results_at'])
-
-            result.submit_type = row['submit_type']
-            result.correct_questions_count = row['correct_questions_count']
-            result.incorrect_questions_count = row['incorrect_questions_count']
-            result.unsolved_questions_count = row['unsolved_questions_count']
-            result.student_name = row['student_name']
-            result.student_phone = row['student_phone']
-            result.parent_phone = row['parent_phone']
-            result.jwt_token = row['jwt_token']
-            result.number_of_allowed_trials = row['number_of_allowed_trials']
-            result_objects.append(result)
-        return result_objects
-
-    def _make_timezone_aware(self, dt):
-        """Helper method to ensure datetime is timezone-aware"""
-        if dt is None:
-            return None
-
-        # If it's already timezone-aware, return as is
-        if hasattr(dt, 'tzinfo') and dt.tzinfo is not None:
-            return dt
-
-        # If it's naive, make it timezone-aware
-        if hasattr(dt, 'replace'):
-            # Assume it's in UTC if naive
-            from datetime import timezone as dt_timezone
-            return timezone.make_aware(dt, dt_timezone.utc) if dt.tzinfo is None else dt
-
-        return dt
-
-    def get_queryset(self):
-        """Required by DRF but not used in our custom implementation"""
-        return Result.objects.none()
+                # Get results where the current trial exists but isn't submitted
+                queryset = queryset.filter(
+                    trials__trial=F('trial'),
+                    trials__student_submitted_exam_at__isnull=True
+                ).exclude(
+                    trials__trial=F('trial') - 1,
+                    trials__student_submitted_exam_at__isnull=False
+                )
+        
+        # Apply .distinct() at the very end to remove any duplicates
+        # caused by joins, especially from the annotation.
+        return queryset.distinct()
 
 
 class ReduceResultTrialView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Exam.objects.all()
         
     
@@ -3129,7 +2956,7 @@ class ReduceResultTrialView(APIView):
 
 
 class ExamResultDetailView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Result.objects.all()
 
     def get(self, request, result_id):
@@ -3308,7 +3135,7 @@ class ExamResultDetailView(APIView):
 
 
 class ExamResultDetailForTrialView(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Result.objects.all()
 
     def get(self, request, result_id, result_trial_id):
@@ -3496,7 +3323,7 @@ class ExamResultDetailForTrialView(APIView):
 
 
 class ResultTrialsView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     serializer_class = ResultTrialSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['submit_type']
@@ -3513,7 +3340,7 @@ class ResultTrialsView(generics.ListAPIView):
 #^ get students who toke the exam and those who didn't
 class StudentsTookExamAPIView(generics.ListAPIView):
     serializer_class = FlattenedStudentResultSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     queryset = Student.objects.all()
     
     def get_queryset(self):
@@ -3566,7 +3393,7 @@ class StudentsTookExamAPIView(generics.ListAPIView):
 
 class StudentsDidNotTakeExamAPIView(generics.ListAPIView):
     serializer_class = StudentSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     
 
     def get_queryset(self):
@@ -3608,49 +3435,14 @@ class StudentsDidNotTakeExamAPIView(generics.ListAPIView):
 
 class ExamsTakenByStudentAPIView(generics.ListAPIView):
     serializer_class = FlattenedExamResultSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
-
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
+    
     def get_queryset(self):
         student_id = self.kwargs['student_id']
         student = get_object_or_404(Student, id=student_id)
 
-        # Get the teacher for the current user
-        user = self.request.user
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            teacher = Teacher.objects.filter(user=user).first()
-
         # Get exams taken by the student
         exams_taken = Exam.objects.filter(results__student=student).distinct()
-
-        # Apply teacher filter if the user is a teacher
-        if teacher:
-            exams_taken = exams_taken.filter(
-                Q(course__teacher=teacher) |
-                Q(unit__course__teacher=teacher) |
-                Q(video__unit__course__teacher=teacher)
-            )
-
-        # Add exam filtering
-        exam_course = self.request.query_params.get('exam__course')
-        if exam_course:
-            exams_taken = exams_taken.filter(
-                Q(unit__course_id=exam_course) |
-                Q(video__unit__course_id=exam_course) |
-                Q(course_id=exam_course)
-            )
-
-        exam_related_to = self.request.query_params.get('exam__related_to')
-        if exam_related_to:
-            exams_taken = exams_taken.filter(related_to=exam_related_to)
-
-        exam_unit = self.request.query_params.get('exam__unit')
-        if exam_unit:
-            exams_taken = exams_taken.filter(unit_id=exam_unit)
-
-        exam_video = self.request.query_params.get('exam__video')
-        if exam_video:
-            exams_taken = exams_taken.filter(video_id=exam_video)
 
         # Search functionality
         search_query = self.request.query_params.get('search', None)
@@ -3659,12 +3451,12 @@ class ExamsTakenByStudentAPIView(generics.ListAPIView):
                 Q(title__icontains=search_query) |
                 Q(description__icontains=search_query)
             )
-
+            
         # Optimize the query with select/prefetch_related
         exams_taken = exams_taken.select_related(
             'unit', 'video'
         ).prefetch_related(
-            'unit__course__year',
+            'unit__course__year', 
             'video__unit__course__year',
             Prefetch(
                 'results',
@@ -3674,7 +3466,7 @@ class ExamsTakenByStudentAPIView(generics.ListAPIView):
         )
 
         return exams_taken
-
+    
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['student_id'] = self.kwargs['student_id']
@@ -3683,76 +3475,41 @@ class ExamsTakenByStudentAPIView(generics.ListAPIView):
 
 class ExamsNotTakenByStudentAPIView(generics.ListAPIView):
     serializer_class = ExamSerializer
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissionsOrIsTeacher]
+    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
 
     def get_queryset(self):
         student_id = self.kwargs['student_id']
         student = get_object_or_404(Student, id=student_id)
-
-        # Get the teacher for the current user
-        user = self.request.user
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            teacher = Teacher.objects.filter(user=user).first()
-
+        
         # Get active course subscriptions for the student
         student_course_subscriptions = CourseSubscription.objects.filter(
-            student=student,
+            student=student, 
             active=True
         )
-
+        
         # Get the IDs of subscribed courses
         subscribed_course_ids = student_course_subscriptions.values_list('course_id', flat=True)
-
+        
         # Get exams from subscribed courses only
         subscribed_exams = Exam.objects.filter(
-            Q(unit__course_id__in=subscribed_course_ids) |
+            Q(unit__course_id__in=subscribed_course_ids) | 
             Q(video__unit__course_id__in=subscribed_course_ids)
         ).distinct()
-
-        # Apply teacher filter if the user is a teacher
-        if teacher:
-            subscribed_exams = subscribed_exams.filter(
-                Q(course__teacher=teacher) |
-                Q(unit__course__teacher=teacher) |
-                Q(video__unit__course__teacher=teacher)
-            )
-
+        
         # Get exams taken by the student
         exams_taken = Exam.objects.filter(results__student=student).distinct()
-
+        
         # Get exams not taken by the student (from subscribed courses only)
         exams_not_taken = subscribed_exams.exclude(id__in=exams_taken.values('id'))
-
-        # Add exam filtering
-        exam_course = self.request.query_params.get('exam__course')
-        if exam_course:
-            exams_not_taken = exams_not_taken.filter(
-                Q(unit__course_id=exam_course) |
-                Q(video__unit__course_id=exam_course) |
-                Q(course_id=exam_course)
-            )
-
-        exam_related_to = self.request.query_params.get('exam__related_to')
-        if exam_related_to:
-            exams_not_taken = exams_not_taken.filter(related_to=exam_related_to)
-
-        exam_unit = self.request.query_params.get('exam__unit')
-        if exam_unit:
-            exams_not_taken = exams_not_taken.filter(unit_id=exam_unit)
-
-        exam_video = self.request.query_params.get('exam__video')
-        if exam_video:
-            exams_not_taken = exams_not_taken.filter(video_id=exam_video)
-
-        # Search functionality
+        
+        # Search functionality (optional, if needed)
         search_query = self.request.query_params.get('search', None)
         if search_query:
             exams_not_taken = exams_not_taken.filter(
                 Q(title__icontains=search_query) |
                 Q(description__icontains=search_query)
             )
-
+            
         return exams_not_taken
 
 
@@ -3868,37 +3625,22 @@ class CreateOrUpdateTempExamAllowedTimes(APIView):
 class VideoQuizListCreateAPIView(generics.ListCreateAPIView):
     queryset = VideoQuiz.objects.all()
     serializer_class = VideoQuizSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    
     filterset_fields = [
-        'exam',
-        'course',
-        'video',
-    ]
+            'exam',
+            'course',
+            'video',
+            ]
+
     search_fields = [
         'exam__title',
-        'course__name',
-        'course__description',
-        'video__name',
-        'video__description',
-    ]
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-
-        # Get the teacher for the current user
-        user = self.request.user
-        teacher = getattr(user, "teacher", None)
-        if not teacher:
-            teacher = Teacher.objects.filter(user=user).first()
-
-        # Apply teacher filter if the user is a teacher
-        if teacher:
-            queryset = queryset.filter(
-                Q(course__teacher=teacher) |
-                Q(video__unit__course__teacher=teacher)
-            )
-
-        return queryset
+            'course__name',
+            'course__description',
+            'video__name',
+            'video__description',
+            
+        ]
 
 
 class VideoQuizRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):

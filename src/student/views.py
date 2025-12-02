@@ -472,8 +472,6 @@ class InvoicesListView(generics.ListAPIView):
     filter_backends = [DjangoFilterBackend, SearchFilter]
     search_fields = [
         'sequence',
-        'item_barcode',
-        'pay_status',
         ]
     
     def get_queryset(self):
@@ -488,12 +486,19 @@ class InvoicesListView(generics.ListAPIView):
 class SubscriptionCourseListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CourseSubscriptionSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {
+        "course__id": ["exact"],          # filter by course id
+        "course__category__id": ["exact"], # optional: filter by category id
+        "course__teacher": ["exact"] 
+        
+    }
 
     def get_queryset(self):
         return CourseSubscription.objects.filter(
             student=self.request.user.student,
             active=True,
-            )
+        )
 
 
 #*Videos

@@ -15,7 +15,6 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
 from django.db.models import Prefetch
 import logging
-from django.db import transaction
 # custom filters
 from exam.filters import RelatedCourseFilterBackend
 #celery
@@ -222,19 +221,10 @@ class SubmitExam(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser]
 
-    @transaction.atomic
     def post(self, request, exam_id):
         student = request.user.student
         exam = get_object_or_404(Exam, pk=exam_id)
         submit_type = request.data.get("submit_type", "student_submit")
-        
-        # Add idempotency key to prevent duplicate submissions from network retries
-        idempotency_key = request.META.get('HTTP_X_IDEMPOTENCY_KEY')
-        if not idempotency_key:
-            # Generate a unique key based on request content if not provided
-            import hashlib
-            content_hash = hashlib.md5(str(sorted(request.data.items())).encode()).hexdigest()
-            idempotency_key = f"{student.id}_{exam_id}_{content_hash}"
 
         # Get all unique question IDs from the request
         question_ids = set()
@@ -244,42 +234,16 @@ class SubmitExam(APIView):
             elif key == 'question_id':  # Handle case where it's not numbered
                 question_ids.add(int(request.data[key]))
 
-        # Check for empty payload (no questions submitted)
-        if not question_ids:
+        # Get or create Result and ResultTrial
+        result = get_object_or_404(Result, student=student, exam=exam)
+        result_trial = result.trials.filter(trial=result.trial).first()
+        if not result_trial:
             return Response(
-                {"error": "You are sending empty payload - no questions submitted"},
+                {"error": "No active trial found for this exam"},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get or create Result and ResultTrial with select_for_update to prevent race conditions
-        try:
-            result = get_object_or_404(Result.objects.select_for_update(), student=student, exam=exam)
-            result_trial = result.trials.select_for_update().filter(trial=result.trial).first()
-            if not result_trial:
-                return Response(
-                    {"error": "No active trial found for this exam"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error retrieving result/trial for student {student.id}, exam {exam_id}: {str(e)}")
-            return Response(
-                {"error": "Unable to retrieve exam session"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-        
-        # prevent duplicate submissions for completed trials
-        if result_trial.student_submitted_exam_at is not None:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.warning(f"Duplicate submission attempt - Student: {student.id}, Exam: {exam_id}, Trial: {result.trial}")
-            return Response(
-                {"error": "لقد أنهيت هذه المحاولة بالفعل، ابدأ محاولة جديدة"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Process each question using update_or_create for better performance
+        # Process each question
         for question_id in question_ids:
             question = get_object_or_404(Question, pk=question_id)
             if question.question_type == QuestionType.MCQ:
@@ -287,17 +251,15 @@ class SubmitExam(APIView):
                 selected_answer_id = request.data.get(f"selected_answer_id_{question_id}")
                 # Handle null/empty string case
                 if selected_answer_id in [None, "", "null"]:
-                    # Update or create submission with no answer
-                    submission, created = Submission.objects.update_or_create(
+                    # Always create new submission with no answer
+                    Submission.objects.create(
                         student=student,
                         exam=exam,
                         question=question,
                         result_trial=result_trial,
-                        defaults={
-                            'selected_answer': None,
-                            'is_solved': False,
-                            'is_correct': False
-                        }
+                        selected_answer=None,
+                        is_solved=False,
+                        is_correct=False
                     )
                     StudentBank.objects.get_or_create(
                         student=student,
@@ -306,47 +268,38 @@ class SubmitExam(APIView):
                     )
                     continue
                 try:
-                    
                     selected_answer = get_object_or_404(
                         Answer,
                         pk=selected_answer_id,
                         question=question
                     )
-                    # Update or create submission with the selected answer
-                    submission, created = Submission.objects.update_or_create(
+                    # Always create new submission with the selected answer
+                    Submission.objects.create(
                         student=student,
                         exam=exam,
                         question=question,
                         result_trial=result_trial,
-                        defaults={
-                            'selected_answer': selected_answer,
-                            'is_solved': True,
-                            'is_correct': selected_answer.is_correct
-                        }
+                        selected_answer=selected_answer,
+                        is_solved=True,
+                        is_correct=selected_answer.is_correct
                     )
-
-                    
-                    if not submission.is_correct:
-
+                    if not Submission.is_correct:
                         StudentBank.objects.get_or_create(
                             student=student,
                             question=question,
                             defaults={"add_reason": AddReasonChoices.INCORRECT}
                         )
-
                 except (ValueError, status.HTTP_404_NOT_FOUND):
                     # Handle invalid answer ID
-                    # Update or create submission with no answer
-                    submission, created = Submission.objects.update_or_create(
+                    # Always create new submission with no answer
+                    Submission.objects.create(
                         student=student,
                         exam=exam,
                         question=question,
                         result_trial=result_trial,
-                        defaults={
-                            'selected_answer': None,
-                            'is_solved': False,
-                            'is_correct': False
-                        }
+                        selected_answer=None,
+                        is_solved=False,
+                        is_correct=False
                     )
                     StudentBank.objects.get_or_create(
                         student=student,
@@ -358,18 +311,16 @@ class SubmitExam(APIView):
                 essay_answer_text = request.data.get(f"essay_answer_text_{question_id}", "")
                 # Handle file upload
                 essay_answer_file = request.FILES.get(f"essay_file_{question_id}")
-                # Update or create essay submission
-                essay_submission, created = EssaySubmission.objects.update_or_create(
+                # Always create new essay submission
+                EssaySubmission.objects.create(
                     student=student,
                     exam=exam,
                     question=question,
                     result_trial=result_trial,
-                    defaults={
-                        'answer_text': essay_answer_text,
-                        'answer_file': essay_answer_file,
-                        'is_scored': False,
-                        'score': None
-                    }
+                    answer_text=essay_answer_text,
+                    answer_file=essay_answer_file,
+                    is_scored=False,
+                    score=None
                 )
 
         # Calculate scores
@@ -410,20 +361,10 @@ class SubmitExam(APIView):
             result.save()
 
         except Exception as e:
-            # Log the error for debugging
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error calculating score for student {student.id}, exam {exam_id}: {str(e)}")
-            
             return Response(
                 {"error": f"Error calculating score: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-        # Log successful submission
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Exam submission successful - Student: {student.id}, Exam: {exam_id}, Trial: {result.trial}, Score: {total_score}, Idempotency Key: {idempotency_key}")
 
         return Response({
             "message": "Exam submitted successfully",
@@ -472,17 +413,17 @@ class StudentExamResultsView(generics.ListAPIView):
                 to_attr='prefetched_model_questions'
             )
         ).annotate(
-            is_allowed_to_show_result=Case(  # Commented out as not needed
-                When(exam__allow_show_results_at__lte=now, then=True),
-                default=False,
-                output_field=BooleanField()
-            ),
-            is_allowed_to_show_answers=Case(  # Commented out as not needed
-                When(exam__allow_show_answers_at__isnull=True, then=False),
-                When(exam__allow_show_answers_at__lte=now, then=True),
-                default=False,
-                output_field=BooleanField()
-            )
+            # is_allowed_to_show_result=Case(  # Commented out as not needed
+            #     When(exam__allow_show_results_at__lte=now, then=True),
+            #     default=False,
+            #     output_field=BooleanField()
+            # ),
+            # is_allowed_to_show_answers=Case(  # Commented out as not needed
+            #     When(exam__allow_show_answers_at__isnull=True, then=False),
+            #     When(exam__allow_show_answers_at__lte=now, then=True),
+            #     default=False,
+            #     output_field=BooleanField()
+            # )
         ).order_by('-added')
 
 class GetMyExamResult(APIView):
@@ -679,7 +620,7 @@ class GetMyExamResultForTrial(APIView):
                 queryset=Answer.objects.filter(is_correct=True),
                 to_attr='correct_answers_list'
             )
-        ).order_by('id')
+        )
 
         # Fetch Essay submissions
         essay_submissions = EssaySubmission.objects.filter(

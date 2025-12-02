@@ -16,7 +16,7 @@ urlpatterns = [
     path("student/block/list/", views.StudentBlockListView.as_view(), name="StudentBlock"),
     path("student/device/list/",views.StudentDeviceListView.as_view(),name='StudentBlockListView'),
     path('student/device/delete/<int:id>/', views.StudentDeviceDeleteView.as_view(),name='StudentDeviceDeleteView'),
-
+    path('student/exclude-teacher/<int:teacher_id>/', views.StudentExcludeTeacherListView.as_view()),
     #* < ==============================[ <- Staff -> ]============================== > ^#
     path("staff/list/", views.StaffListView.as_view(), name="StaffListView"),
     path("staff/create/", views.CreateStaffView.as_view(), name="CreateStaffView"),
@@ -37,6 +37,7 @@ urlpatterns = [
     #* < ==============================[ <- Teacher -> ]============================== > ^#
     path('teacher/list/', views.TeacherListView.as_view(), name="TeacherListView"),
     path("teacher/list/simple/", views.TeacherSimpleListView.as_view(), name="student_course_category"),
+    path("teacher/student/list/",views.TeacherStudentListView.as_view(),name="StudentTeacherList"),
     path("teacher/rest-password/<str:username>/",views.UserRestPasswordView.as_view(), name="UserRestPasswordView"),
     path('teacher/create/',views.TeacherCreateView.as_view(),name="Create-Teacher"),
     path('teacher/update/<int:id>/', views.TeacherUpdateView.as_view(), name="Update-Teacher"),
@@ -65,6 +66,7 @@ urlpatterns = [
     #Video
     path('unit/video/list/<int:unit_id>/', views.VideoListView.as_view(), name='video-list'),
     path('unit/video/create/<int:unit_id>/', views.VideoCreateView.as_view(), name='video-create'),
+    path('video/list/', views.AllVideoListView.as_view(), name='video-update'),
     path('video/update/<int:video_id>/', views.VideoUpdateView.as_view(), name='video-update'),
     path('video/delete/<int:video_id>/', views.VideoDeleteView.as_view(), name='video-delete'),
     path('video/list/simple/<int:unit_id>/', views.VideoSimpleList.as_view(), name='video-delete'),

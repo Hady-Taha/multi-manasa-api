@@ -2,7 +2,7 @@ import requests
 import hashlib
 import json
 import uuid
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
@@ -130,7 +130,7 @@ class PayWithEasyPay(APIView):
         payment_data = {
             "vendor_code": f'{settings.EASY_PAY_CODE}',
             "amount": f'{invoice.amount}',
-            "payment_expiry": settings.EASY_PAYMENT_EXPIRY,
+            "payment_expiry": int((datetime.now() + timedelta(days=4)).timestamp() * 1000),
             "signature": f'{signature}',
             "payment_method": "fawry",
             "customer": {

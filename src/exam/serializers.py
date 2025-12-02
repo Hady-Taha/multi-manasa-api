@@ -133,8 +133,8 @@ class StudentExamResultSerializer(serializers.ModelSerializer):
     # trials = serializers.IntegerField(source='trial')  # Commented out
     # trials_finished = serializers.BooleanField(source='is_trials_finished')  # Commented out
     # passing_percent = serializers.IntegerField(source='exam.passing_percent')  # Commented out
-    allowed_to_show_result = serializers.BooleanField(source='is_allowed_to_show_result')  # Commented out
-    allowed_to_show_answers = serializers.BooleanField(source='is_allowed_to_show_answers')  # Commented out
+    # allowed_to_show_result = serializers.BooleanField(source='is_allowed_to_show_result')  # Commented out
+    # allowed_to_show_answers = serializers.BooleanField(source='is_allowed_to_show_answers')  # Commented out
     # added_at = serializers.DateTimeField(source='added')  # Commented out
     # start = serializers.DateTimeField(source='exam.start')  # Commented out
     # end = serializers.DateTimeField(source='exam.end')  # Commented out
@@ -176,8 +176,8 @@ class StudentExamResultSerializer(serializers.ModelSerializer):
             # 'incorrect_questions_count',  # Commented out
             # 'insolved_questions_count',  # Commented out
             'number_of_questions',
-            'allowed_to_show_result',  # Commented out
-            'allowed_to_show_answers',  # Commented out
+            # 'allowed_to_show_result',  # Commented out
+            # 'allowed_to_show_answers',  # Commented out
             # 'passing_percent',  # Commented out
             # 'added_at',  # Commented out
             # 'start',  # Commented out
@@ -203,9 +203,6 @@ class StudentExamResultSerializer(serializers.ModelSerializer):
 
     def get_last_trials(self, obj):
         """Return the last 3 trials for this result"""
-        if not obj.is_allowed_to_show_result:
-            return "غير مسموح بعرض النتائج بعد"
-            
         # Get all trials ordered by trial number (descending)
         all_trials = obj.trials.all().order_by('-trial')
         
@@ -230,14 +227,10 @@ class StudentExamResultSerializer(serializers.ModelSerializer):
         return active_trial.exam_score if active_trial else 0
 
     def get_student_score(self, obj):
-        if not obj.is_allowed_to_show_result:
-            return "غير مسموح بعد"
         active_trial = self._get_active_trial(obj)
         return active_trial.score if active_trial else 0
 
     def get_is_succeeded(self, obj):
-        if not obj.is_allowed_to_show_result:
-            return "غير مسموح بعد"
         active_trial = self._get_active_trial(obj)
         if active_trial:
             return active_trial.score >= (obj.exam.passing_percent / 100) * active_trial.exam_score
@@ -298,9 +291,6 @@ class StudentExamResultSerializer(serializers.ModelSerializer):
     #             counts = {'correct': 0, 'incorrect': 0, 'unsolved': 0}
     #         self._submission_counts[obj.id] = counts
     #     return self._submission_counts[obj.id]
-
-
-
 
 class VideoQuizSerializer(serializers.ModelSerializer):
     exam_url = serializers.SerializerMethodField()

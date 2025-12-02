@@ -2,7 +2,7 @@ from rest_framework import serializers
 from subscription.models import *
 from course.models import *
 from view.models import VideoView
-from exam.models import Exam,Result
+from exam.models import *
 from teacher.models import TeacherCenterStudentCode
 from .models import *
 
@@ -83,7 +83,6 @@ class VideoViewSerializer(serializers.ModelSerializer):
             'video_id',
             'video_name',
             'video_views_quantity',
-            'last_duration',
             'duration',
             'session_duration',
             'student_code',
@@ -179,12 +178,13 @@ class ExamSerializer(serializers.ModelSerializer):
 
 class ExamResultSerializer(serializers.ModelSerializer):
     exam_id = serializers.IntegerField(source='exam.id', read_only=True)
-    student_code = serializers.CharField(source='student.code')
+    student_code = serializers.SerializerMethodField()  # Now handled by method
     student_name = serializers.CharField(source='student.name')
     username = serializers.CharField(source='student.user.username')
-    student_started_exam_at = serializers.SerializerMethodField()  # Fetch from ResultTrial
-    student_submitted_exam_at = serializers.SerializerMethodField()  # Fetch from ResultTrial
+    student_started_exam_at = serializers.SerializerMethodField()
+    student_submitted_exam_at = serializers.SerializerMethodField()
     student_score = serializers.SerializerMethodField()
+
     class Meta:
         model = Result
         fields = [
@@ -196,25 +196,34 @@ class ExamResultSerializer(serializers.ModelSerializer):
             'student_started_exam_at',
             'student_submitted_exam_at',
         ]
-    
+
+    def get_student_code(self, obj):
+        """
+        Fetch the student code from TeacherCenterStudentCode.
+        Prioritize teacher-student unique mapping.
+        """
+        teacher = None
+        if obj.exam.course:  
+            teacher = obj.exam.course.teacher  # exam -> course -> teacher
+
+        student_code = TeacherCenterStudentCode.objects.filter(
+            student=obj.student,
+            teacher=teacher
+        ).first()
+
+        return student_code.code if student_code else None
+
     def get_student_started_exam_at(self, obj):
-        """Fetch the start time from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.student_started_exam_at
-        return None
+        active_trial = getattr(obj, 'active_trial', None)
+        return active_trial.student_started_exam_at if active_trial else None
 
     def get_student_submitted_exam_at(self, obj):
-        """Fetch the submission time from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
-            return active_trial.student_submitted_exam_at
-        return None
+        active_trial = getattr(obj, 'active_trial', None)
+        return active_trial.student_submitted_exam_at if active_trial else None
 
     def get_student_score(self, obj):
-        """Fetch the student's score from the active trial."""
-        active_trial = obj.active_trial
-        if active_trial:
+        active_trial = getattr(obj, 'active_trial', None)
+        if isinstance(active_trial, ResultTrial):
             return active_trial.score
         return 0
 

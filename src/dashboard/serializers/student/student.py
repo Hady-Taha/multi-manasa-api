@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db.models import F, Count
 from rest_framework import serializers
 from student.models import *
+from teacher.models import TeacherCenterStudentCode
 
 class StudentSerializer(serializers.ModelSerializer):
     user__username = serializers.CharField(source="user.username")
@@ -153,4 +154,33 @@ class StudentDeviceSerializer(serializers.ModelSerializer):
             'device_id',
             'name',
             'os'
+        ]
+        
+
+class TeacherStudentSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(source="student.id",allow_null=True)
+    name = serializers.CharField(source="student.name",allow_null=True)
+    username = serializers.CharField(source="student.user.username",allow_null=True)
+    parent_phone = serializers.CharField(source="student.parent_phone",allow_null=True)
+    type_education_id = serializers.IntegerField(source="student.type_education.id",allow_null=True)
+    type_education_name = serializers.CharField(source="student.type_education.name",allow_null=True)
+    year = serializers.IntegerField(source="student.year.id",allow_null=True)
+    year_name = serializers.CharField(source="student.year.name",allow_null=True)
+    division = serializers.CharField(source="student.division",allow_null=True)
+    points = serializers.CharField(source="student.points",allow_null=True)
+    
+    class Meta:
+        model = TeacherCenterStudentCode
+        fields = [
+            'id',
+            'username',
+            'name',
+            'parent_phone',
+            'type_education_id',
+            'type_education_name',
+            'year',
+            'year_name',
+            'points',
+            'division',
+            'code',
         ]
