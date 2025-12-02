@@ -1,4 +1,5 @@
 import requests
+import json
 from rest_framework.views import APIView
 from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework import generics
@@ -14,6 +15,8 @@ from .models import CourseSubscription, VideoSubscription
 from .serializers import *
 from exam.serializers import ExamSerializer,VideoQuizSerializer
 from exam.models import VideoQuiz
+
+
 
 # Create your views here.
 #* < ==============================[ <- Course -> ]============================== > ^#
@@ -58,16 +61,19 @@ class CourseAccessUnitContent(APIView):
         files = unit.unit_files.filter(pending=False)
         return CourseFileSerializer(files, many=True, context={'request': self.request}).data
 
+    
+    
     def get_exam(self,unit):
         exams = unit.exams.filter(is_active=True)
         return ExamSerializer(exams, many=True, context={'request': self.request}).data
 
+    
     def get_subunit(self, unit):
         subunits = unit.subunits.filter(pending=False)
         return CourseSubunitSerializer(subunits, many=True, context={'request': self.request}).data
 
 
-    def combine_content(self, videos, files, subunits, exams):
+    def combine_content(self, videos, files,subunits, exams):
         combined_content = sorted(
             [{'content_type': 'video', **video} for video in videos] +
             [{'content_type': 'file', **file} for file in files] +
@@ -91,7 +97,7 @@ class CourseAccessContent(APIView):
         
         # handel content type video
         if content_type == "video":
-            return self.access_video(course,content_id,student)
+            return self.access_video(course,content_id,student,request)
         
         # handel content type file
         if content_type == "file":
@@ -101,8 +107,11 @@ class CourseAccessContent(APIView):
         return Response({"error":"content type not found "},status=status.HTTP_400_BAD_REQUEST)
     
 
-    def access_video(self, course, video_id, student):
+    def access_video(self, course, video_id, student,request):
         video = get_object_or_404(Video, id=video_id)
+        user_agent = request.META.get("HTTP_USER_AGENT", "").lower()
+        is_pc = any(keyword in user_agent for keyword in ["windows", "macintosh", "postmanruntime","cros","chrome os"])
+        is_ios = any(keyword in user_agent for keyword in ["iphone", "ipad", "ipod"])
         
         #^ validations on video
         # 1. validate if video in the same course
@@ -117,7 +126,51 @@ class CourseAccessContent(APIView):
         if not self.has_passed_required_exams(student, video):
             return Response({"error": "يجب عليك اجتياز جميع الامتحانات المطلوبة للدخول إلى هذا الدرس"}, status=status.HTTP_403_FORBIDDEN)
         
-
+        
+        # 4. validate if student pc use vdocipher 
+        if is_pc and video.stream_type == StreamType.EASYSTREAM_ENCRYPTED and (settings.VDOCIPHER_SYSTEM or student.is_vdocipher):
+            data = json.dumps({
+                "annotate": json.dumps([
+                    {'type':'rtext', 'text':f'{request.user.username}', 'alpha':'0.60', 'color':'0xFF0000', 'size':'15','interval':'5000'}
+                    ])
+                })
+            response = requests.post(
+                f"https://dev.vdocipher.com/api/videos/{video.vdocipher_id}/otp",
+                json={"ttl": 300},
+                data = data,
+                headers={
+                    "Authorization": f"Apisecret {settings.VDO_API_KEY}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            )
+            context = {
+                **CourseVideoSerializer(video,context={"request": self.request}).data,
+                "stream_type": StreamType.VDOCIPHER,
+                "credentials": response.json(),
+            }
+            return Response(context, status=status.HTTP_200_OK)
+        
+        # 5. validate if student pc use easystream drm 
+        if is_pc and video.stream_type == StreamType.EASYSTREAM_ENCRYPTED and (settings.EASYSTREAM_SYSTEM or student.is_vdocipher):
+            url = 'https://stream.easy-tech.ai/video/create-token/'
+            data = json.dumps({
+                "video_id": video.easystream_video_id,
+                "wid":student.user.username,
+            })
+            header = {
+                "api-key": f"{settings.EASY_STREAM_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            response = requests.post(url,data=data,headers=header)
+            context = {
+                **CourseVideoSerializer(video,context={"request": self.request}).data,
+                "stream_type": StreamType.EASYSTREAM_DRM,
+                "credentials": response.json(),
+            }
+            return Response(context, status=status.HTTP_200_OK)
+        
         #^ the video content
         # response video use stream type
         if video.stream_type in [StreamType.YOUTUBE_SHOW, StreamType.YOUTUBE_HIDE,StreamType.EASYSTREAM_NOT_ENCRYPTED,StreamType.VIMEO]:
@@ -130,6 +183,11 @@ class CourseAccessContent(APIView):
 
         # EASYSTREAM APP
         if video.stream_type == StreamType.EASYSTREAM_ENCRYPTED:
+            # detect ios
+            # switch between mpd / m3u8
+
+            video_url = video.stream_link.replace("manifest.mpd", "master.m3u8")
+            
             # the payload
             video_quizzes = VideoQuiz.objects.filter(video=video)
             payload = {
@@ -137,15 +195,17 @@ class CourseAccessContent(APIView):
                 "course_id":course.id,
                 "lesson_id": video.id,
                 "video_id": video.id,
+                "player_type": video.player_type,
                 "lesson_name": video.name,
                 "unit_name": video.unit.name,
-                "video_url": video.stream_link,
+                "video_url":video_url,
                 "token": student.jwt_token,
                 "base_url": settings.BASE_URL,
                 "embed":video.embed,
                 "platform_name": settings.PLATFORM_NAME,
                 "request_delay": settings.REQUEST_DELAY,
                 "exam_timeline": VideoQuizSerializer(video_quizzes, many=True, context={"request": self.request}).data if video_quizzes.exists() else None,
+                
             }
             # encrypt the payload
             encrypted_data = encrypt_data(payload)
@@ -159,8 +219,14 @@ class CourseAccessContent(APIView):
 
         # VideoCipher
         if video.stream_type == StreamType.VDOCIPHER:
+            data = json.dumps({
+                "annotate": json.dumps([
+                    {'type':'rtext', 'text':f'{request.user.username}', 'alpha':'0.60', 'color':'0xFF0000', 'size':'15','interval':'5000'}
+                    ])
+            })
             response = requests.post(
                 f"https://dev.vdocipher.com/api/videos/{video.stream_link}/otp",
+                data=data,
                 json={"ttl": 300},
                 headers={
                     "Authorization": f"Apisecret {settings.VDO_API_KEY}",
@@ -168,7 +234,22 @@ class CourseAccessContent(APIView):
                     "Accept": "application/json"
                 }
             )
-            return Response({**CourseVideoSerializer(video).data, "credentials": response.json()}, status=status.HTTP_200_OK)
+            return Response({**CourseVideoSerializer(video,context={"request": self.request}).data, "credentials": response.json()}, status=status.HTTP_200_OK)
+
+        # EasyStreamDrm
+        if video.stream_type == StreamType.EASYSTREAM_DRM:
+            url = 'https://stream.easy-tech.ai/video/create-token/'
+            data = json.dumps({
+                "video_id": video.easystream_video_id,
+                "wid":student.user.username,
+            })
+            header = {
+                "api-key": f"{settings.EASY_STREAM_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            response = requests.post(url,data=data,headers=header)
+            return Response({**CourseVideoSerializer(video,context={"request": self.request}).data, "credentials": response.json()}, status=status.HTTP_200_OK)
 
 
     def access_file(self, course, file_id):
@@ -205,6 +286,7 @@ class CourseAccessContent(APIView):
 
 class VideoAccessContent(APIView):
     permission_classes = [IsAuthenticated]
+    
     def get(self,request,video_id,*args, **kwargs):
         
         video = Video.objects.get(id=video_id)
@@ -214,12 +296,62 @@ class VideoAccessContent(APIView):
         if not has_access:
             return Response({"detail": "Access denied. You are not subscribed to this video."}, status=status.HTTP_403_FORBIDDEN)
 
-        return self.access_video(video_id, student)
+        return self.access_video(video_id, student,request)
 
-    def access_video(self,video_id, student):
+    def access_video(self,video_id, student,request):
         video = get_object_or_404(Video, id=video_id)
+        user_agent = request.META.get("HTTP_USER_AGENT", "").lower()
+        is_pc = any(keyword in user_agent for keyword in ["windows", "macintosh", "postmanruntime","cros","chrome os"])
+        is_ios = any(keyword in user_agent for keyword in ["iphone", "ipad", "ipod"])
         
-        # 1. validate if video is not pending
+        # 1. validate if student pc use vdocipher 
+        if is_pc and video.stream_type == StreamType.EASYSTREAM_ENCRYPTED and (settings.VDOCIPHER_SYSTEM or student.is_vdocipher):
+            data = json.dumps({
+                "annotate": json.dumps([
+                    {'type':'rtext', 'text':f'{request.user.username}', 'alpha':'0.60', 'color':'0xFF0000', 'size':'15','interval':'5000'}
+                    ])
+                })
+            response = requests.post(
+                f"https://dev.vdocipher.com/api/videos/{video.vdocipher_id}/otp",
+                json={"ttl": 300},
+                data = data,
+                headers={
+                    "Authorization": f"Apisecret {settings.VDO_API_KEY}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                }
+            )
+            context = {
+                **CourseVideoSerializer(video,context={"request": self.request}).data,
+                "stream_type": StreamType.VDOCIPHER,
+                "credentials": response.json(),
+            }
+            return Response(context, status=status.HTTP_200_OK)
+        
+                # 5. validate if student pc use easystream drm 
+        
+        # 2. validate if student pc use easystream drm 
+        if is_pc and video.stream_type == StreamType.EASYSTREAM_DRM and settings.EASYSTREAM_SYSTEM:
+            url = 'https://stream.easy-tech.ai/video/create-token/'
+            data = json.dumps({
+                "video_id": video.easystream_video_id,
+                "wid":student.user.username
+            })
+            header = {
+                "api-key": f"{settings.EASY_STREAM_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            response = requests.post(url,data=data,headers=header)
+            context = {
+                **CourseVideoSerializer(video,context={"request": self.request}).data,
+                "stream_type": StreamType.EASYSTREAM_DRM,
+                "credentials": response.json(),
+            }
+            return Response(context, status=status.HTTP_200_OK)
+        
+        
+        # 3. validate if video is not pending
         if video.pending:
             return Response({"error": "This video is pending and unavailable"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -233,20 +365,26 @@ class VideoAccessContent(APIView):
             }
             return Response(context, status=status.HTTP_200_OK)
 
+        # EASYSTREAM APP
         if video.stream_type == StreamType.EASYSTREAM_ENCRYPTED:
             video_quizzes = VideoQuiz.objects.filter(video=video)
+            video_url = video.stream_link.replace("manifest.mpd", "master.m3u8")
             payload = {
                 "student_id": student.id,
+                "course_id":video.unit.course.id,
                 "lesson_id": video.id,
+                "player_type": video.player_type,
                 "video_id": video.id,
                 "lesson_name": video.name,
                 "unit_name": video.unit.name,
-                "video_url": video.stream_link,
+                "video_url": video_url,
+                "embed":video.embed,
                 "token": student.jwt_token,
                 "base_url": settings.BASE_URL,
                 "platform_name": settings.PLATFORM_NAME,
                 "request_delay": settings.REQUEST_DELAY,
                 "exam_timeline": VideoQuizSerializer(video_quizzes, many=True, context={"request": self.request}).data if video_quizzes.exists() else None,
+                
             }
             encrypted_data = encrypt_data(payload)
             serializer = CourseVideoSerializer(video,context={'request': self.request})
@@ -256,10 +394,17 @@ class VideoAccessContent(APIView):
             }
             return Response(context,status=status.HTTP_200_OK)
 
+        # VideoCipher
         if video.stream_type == StreamType.VDOCIPHER:
+            data = json.dumps({
+                "annotate": json.dumps([
+                    {'type':'rtext', 'text':f'{student.user.username}', 'alpha':'0.60', 'color':'0xFF0000', 'size':'15','interval':'5000'}
+                    ])
+            })
             response = requests.post(
                 f"https://dev.vdocipher.com/api/videos/{video.stream_link}/otp",
                 json={"ttl": 300},
+                data=data,
                 headers={
                     "Authorization": f"Apisecret {settings.VDO_API_KEY}",
                     "Content-Type": "application/json",
@@ -272,4 +417,20 @@ class VideoAccessContent(APIView):
                     "credentials": response.json()
                 }
             return Response(context, status=status.HTTP_200_OK)
+
+                
+        # EasyStreamDrm
+        if video.stream_type == StreamType.EASYSTREAM_DRM:
+            url = 'https://stream.easy-tech.ai/video/create-token/'
+            data = json.dumps({
+                "video_id": video.easystream_video_id,
+                "wid":student.user.username
+            })
+            header = {
+                "api-key": f"{settings.EASY_STREAM_API_KEY}",
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+            response = requests.post(url,data=data,headers=header)
+            return Response({**CourseVideoSerializer(video,context={"request": self.request}).data, "credentials": response.json()}, status=status.HTTP_200_OK)
 

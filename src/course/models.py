@@ -105,6 +105,12 @@ class StreamType(models.TextChoices):
     VIMEO = "vimeo","vimeo",
 
 
+class PlayerType(models.TextChoices):
+    MEDIA_KIT = "media_kit", "media kit"
+    BETTER_PLAYER = "better_player", "better player"
+    EMBED = "embed", "embed"
+
+
 class Video(models.Model):
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=250)
@@ -113,17 +119,22 @@ class Video(models.Model):
     can_view = models.IntegerField(default=5)
     views = models.IntegerField(default=0)
     duration = models.IntegerField(blank=True, null=True)
-    stream_type = models.CharField(max_length=24, choices=StreamType.choices)
+    stream_type = models.CharField(max_length=24,choices=StreamType.choices)
     stream_link = models.CharField(max_length=255)
-    order = models.PositiveIntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    player_type = models.CharField(max_length=24,choices=PlayerType.choices,default=PlayerType.BETTER_PLAYER)
+    vdocipher_id = models.CharField(max_length=255,blank=True, null=True)
+    easystream_video_id = models.CharField(max_length=255,blank=True, null=True)
+    order = models.PositiveIntegerField(default=0)
+    price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     publisher_date = models.DateTimeField(blank=True, null=True)
     pending = models.BooleanField(default=False)
     ready = models.BooleanField(default=False)
-    can_buy = models.BooleanField(default=False)
+    can_buy =  models.BooleanField(default=False)
     free = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
-    barcode = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    is_depends = models.BooleanField(default=False)
+    barcode = models.UUIDField(default=uuid.uuid4,unique=True,editable=False)
     embed = models.BooleanField(default=False)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -152,9 +163,9 @@ class Video(models.Model):
 
             data = response.json()
             self.stream_link = data.get('stream_url')
-            if not self.stream_link:
-                raise ValidationError("Stream URL not found in API response.")
-
+            self.vdocipher_id = data.get('vdocipher_id')
+            self.easystream_video_id = data.get('video_id')
+        
         except requests.RequestException as e:
             raise ValidationError(f"Video metadata fetch failed: {e}")
 

@@ -59,6 +59,7 @@ class CourseVideoSerializer(serializers.ModelSerializer):
     has_passed_exam = serializers.SerializerMethodField()
     has_watched = serializers.SerializerMethodField()
     is_favorite = serializers.SerializerMethodField()
+    is_watched = serializers.SerializerMethodField()
     favorite_id = serializers.SerializerMethodField()
     class Meta:
         model = Video
@@ -69,12 +70,14 @@ class CourseVideoSerializer(serializers.ModelSerializer):
             'can_view',
             'duration',
             'stream_type',
+            'is_depends',
             'order',
             'unit',
             'points',
             'barcode',
             'has_passed_exam',
             'has_watched',
+            'is_watched',
             'is_favorite',
             'favorite_id',
             'exam',
@@ -117,17 +120,50 @@ class CourseVideoSerializer(serializers.ModelSerializer):
 
         return True
 
-
     def get_has_watched(self, obj):
         request = self.context.get('request')
         if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
             return False
 
-        student = getattr(request.user, 'student', None)
-        if student:
-            return VideoView.objects.filter(video=obj, student=student, counter__gte=1).exists()
-        return False
+        student = request.user.student
 
+        # Get all dependent videos in the same unit before this video's order
+        dependent_videos = Video.objects.filter(
+            unit__course=obj.unit.course,
+            order__lt=obj.order,
+            is_depends=True
+        )
+
+        # If no dependent videos, allow watching
+        if not dependent_videos.exists():
+            return True
+
+        # Check if student watched all dependent videos
+        for video in dependent_videos:
+            watched = VideoView.objects.filter(
+                student=student,
+                video=video,
+                counter__gte=1
+            ).exists()
+            if not watched:
+                return False
+
+        return True
+    
+    def get_is_watched(self, obj):
+        request = self.context.get('request')
+        if not request or not hasattr(request, 'user') or not request.user.is_authenticated:
+            return False
+
+        student = request.user.student
+
+        # Check if student watched the video
+        watched = VideoView.objects.filter(student=student,video=obj,counter__gte=1).exists()
+        if not watched:
+            return False
+
+        return True
+    
     def get_is_favorite(self, obj):
         request = self.context.get("request")
         student = getattr(request.user, "student", None)
@@ -135,7 +171,6 @@ class CourseVideoSerializer(serializers.ModelSerializer):
             return False
         content_type = ContentType.objects.get_for_model(Video)
         return StudentFavorite.objects.filter(student=student, content_type=content_type, object_id=obj.id).exists()
-
 
     def get_favorite_id(self, obj):
         request = self.context.get("request")
@@ -204,7 +239,6 @@ class CourseFileSerializer(serializers.ModelSerializer):
         content_type = ContentType.objects.get_for_model(File)
         favorite = StudentFavorite.objects.filter(student=student, content_type=content_type, object_id=obj.id).first()
         return favorite.id if favorite else None
-
 
 
 #* < ==============================[ <- Video -> ]============================== > ^#
