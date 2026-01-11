@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 urlpatterns = [
+
+
     #* < ==============================[ <- Authentication -> ]============================== > ^#
     path("sign-in/", views.TeacherSignInView.as_view(), name="student_sign_in"),
     path("sign-up/", views.TeacherSignUpView.as_view(), name="student_sign_up"),
@@ -29,7 +31,7 @@ urlpatterns = [
     path('unit/video/create/<int:unit_id>/', views.TeacherCreateVideoView.as_view(), name='teacher-create-video'),
     path('unit/video/update/<int:id>/', views.TeacherUpdateVideoView.as_view(), name='teacher-update-video'),
     path('unit/video/delete/<int:id>/', views.TeacherDeleteVideoView.as_view(), name='teacher-delete-video'),
-    
+    path('video/list/', views.TeacherAllVideos.as_view(), name='teacher-all-videos'),
     #Video File
     path('video/file/list/<int:video_id>/', views.TeacherVideoFileListView.as_view(), name='video-file-list'),
     path('video/file/create/<int:video_id>/', views.TeacherVideoFileCreateView.as_view(), name='video-file-create'),
@@ -57,7 +59,9 @@ urlpatterns = [
     #* < ==============================[ <- Student -> ]============================== > ^#
     path('student/list/', views.TeacherListStudentView.as_view(), name='teacher-student-list'),
     path('student/center/sign-up/code/', views.TeacherCenterStudentSignUpView.as_view(), name='teacher-center-student-sign-up'),
-
+    #* < ==============================[ <- View -> ]============================== > ^#
+    path('views/video/list/', views.TeacherVideoViewList.as_view(), name='teacher-video-view-list'),
+    path('views/video/sessions/list/', views.TeacherVideoViewSessionsList.as_view(), name='teacher-video-view-sessions-list'),
     #^ < ==============================[ <- Exam -> ]============================== > ^#
     #^ QuestionCategory
     path('question-categories/', views.TeacherQuestionCategoryListCreateView.as_view(), name='question-category-list-create'),

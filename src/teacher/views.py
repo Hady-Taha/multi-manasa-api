@@ -20,12 +20,15 @@ from core.permissions import IsTeacher
 from exam.serializers import ExamSerializer
 from exam.models import Exam
 from subscription.models import CourseSubscription
+from view.models import VideoView,ViewSession
+from dashboard.filters import ViewSessionFilter
 from .models import *
 from .serializers.profile.profile import *
 from .serializers.course.course import *
 from .serializers.student.student import*
 from .serializers.subscription.subscription import *
 from .serializers.invoice.Invoice import *
+from .serializers.view.view import ListVideoViewListSerializer,ViewSessionListSerializer
 
 #* < ==============================[ <- Authentication -> ]============================== > ^#
 
@@ -244,6 +247,13 @@ class TeacherListVideoView(generics.ListAPIView):
     def get_queryset(self):
         unit_id = self.kwargs['unit_id']
         return Video.objects.filter(unit__course__teacher=self.request.user.teacher, unit_id=unit_id)
+
+
+class TeacherAllVideos(generics.ListAPIView):
+    serializer_class = TeacherListVideoSerializer
+    permission_classes = [IsAuthenticated, IsTeacher]
+    def get_queryset(self):
+        return Video.objects.filter(unit__course__teacher=self.request.user.teacher)
 
 #create
 class TeacherCreateVideoView(generics.CreateAPIView):
@@ -504,7 +514,7 @@ class TeacherListStudentView(generics.ListAPIView):
 
         
 class TeacherCenterStudentSignUpView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsTeacher]
 
     def post(self, request, *args, **kwargs):
         code = request.data.get('code')
@@ -513,6 +523,44 @@ class TeacherCenterStudentSignUpView(APIView):
         get_code.is_available = False
         get_code.save()
         return Response(status=status.HTTP_200_OK)
+
+
+
+#* < ==============================[ <- Views -> ]============================== > ^#
+
+class TeacherVideoViewList(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+    queryset = VideoView.objects.filter(counter__gte = 1).order_by("-created")
+    serializer_class = ListVideoViewListSerializer
+    filter_backends = [DjangoFilterBackend,SearchFilter]
+    search_fields = [
+        'student__user__username',
+        'student__name',
+    ]
+    filterset_fields = [
+        'student',
+        'student__year',
+        'counter',
+        'video',
+        'video__unit__course',
+    ]
+    
+    
+    def get_queryset(self):
+        return VideoView.objects.filter(video__unit__course__teacher=self.request.user.teacher)
+
+class TeacherVideoViewSessionsList(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
+    serializer_class = ViewSessionListSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = [
+        'session',
+        'view__student__user__username',
+    ]
+    filterset_class = ViewSessionFilter 
+    
+    def get_queryset(self):
+        return ViewSession.objects.filter(view__video__unit__course__teacher=self.request.user.teacher)
 
 #ap:Exam
 #^ < ==============================[ <- Exam -> ]============================== > ^#
@@ -539,6 +587,7 @@ from exam.models import (
     TempExamAllowedTimes, VideoQuiz
 )
 from .serializers.exam.exam import *
+from django.db.models import When
 
 
 class TeacherPermissionMixin:

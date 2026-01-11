@@ -13,6 +13,7 @@ class ListStudentCourseSubscription(serializers.ModelSerializer):
     course__name = serializers.CharField(source="course.name")
     student__government = serializers.CharField(source="student.government")
     student__parent_phone = serializers.CharField(source="student.parent_phone")
+    year__name = serializers.CharField(source="student.year.name")
     invoice__sequence = serializers.CharField(source="invoice.sequence",allow_null=True)
     class Meta:
         model = CourseSubscription
@@ -25,6 +26,7 @@ class ListStudentCourseSubscription(serializers.ModelSerializer):
             'student__type_education_name',
             'student__type_education',
             'student__parent_phone',
+            'year__name',
             'course__name',
             'student__code',
             'student__is_center',

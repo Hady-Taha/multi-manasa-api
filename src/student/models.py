@@ -44,6 +44,7 @@ class Student(models.Model):
     code = models.CharField(max_length=50,blank=True, null=True)
     is_center = models.BooleanField(default=False)
     is_admin = models.BooleanField(default=False)
+    is_vdocipher = models.BooleanField(default=False)
     device_count = models.IntegerField(default=2)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)

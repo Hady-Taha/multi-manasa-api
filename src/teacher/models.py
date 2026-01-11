@@ -11,6 +11,7 @@ class Teacher(models.Model):
     government = models.CharField(max_length=100)
     jwt_token = models.CharField(max_length=1000, blank=True, null=True)
     active = models.BooleanField(default=False)
+    order = models.IntegerField(default=1)
     facebook_url = models.URLField(blank=True, null=True)
     tiktok_url = models.URLField(blank=True, null=True)
     instagram_url = models.URLField(blank=True, null=True)

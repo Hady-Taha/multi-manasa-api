@@ -115,6 +115,7 @@ class TeacherUpdateSerializer(serializers.ModelSerializer):
             'info',
             'government',
             'active',
+            'order',
             'course_categories',
             'facebook_url',
             'tiktok_url',
