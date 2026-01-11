@@ -510,9 +510,7 @@ class TeacherListStudentView(generics.ListAPIView):
         return Student.objects.filter(
             coursesubscription__course__teacher=self.request.user.teacher
         ).distinct()
-        
 
-        
 class TeacherCenterStudentSignUpView(APIView):
     permission_classes = [IsAuthenticated,IsTeacher]
 
@@ -524,7 +522,17 @@ class TeacherCenterStudentSignUpView(APIView):
         get_code.save()
         return Response(status=status.HTTP_200_OK)
 
+class TeacherStudentLoginSessionView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated, IsTeacher]
 
+    serializer_class = TeacherStudentLoginSessionSerializer
+    filterset_fields = [
+            'student_id',
+        ]
+    def get_queryset(self):
+        return StudentLoginSession.objects.filter(
+            student__coursesubscription__course__teacher=self.request.user.teacher
+        ).select_related('student').distinct()
 
 #* < ==============================[ <- Views -> ]============================== > ^#
 

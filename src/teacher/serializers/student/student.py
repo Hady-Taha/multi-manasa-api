@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from student.models import Student
+from student.models import Student,StudentLoginSession
 
 
 class TeacherStudentSerializer(serializers.ModelSerializer):
@@ -21,3 +21,27 @@ class TeacherStudentSerializer(serializers.ModelSerializer):
             "year",
         ]
 
+
+class TeacherStudentLoginSessionSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.name', read_only=True)
+
+    class Meta:
+        model = StudentLoginSession
+        fields = [
+            'student_name',
+            'ip_address',
+            'os',
+            'os_version',
+            'browser',
+            'browser_version',
+            'city',
+            'is_mobile',
+            'is_tablet',
+            'is_touch_capable',
+            'is_pc',
+            'is_bot',
+            'created',
+            'updated',
+        ]
+        read_only_fields = ['created', 'updated']
+        
