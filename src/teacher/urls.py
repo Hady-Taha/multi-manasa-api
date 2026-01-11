@@ -59,6 +59,7 @@ urlpatterns = [
     #* < ==============================[ <- Student -> ]============================== > ^#
     path('student/list/', views.TeacherListStudentView.as_view(), name='teacher-student-list'),
     path('student/center/sign-up/code/', views.TeacherCenterStudentSignUpView.as_view(), name='teacher-center-student-sign-up'),
+    path("student/details/<int:student_id>/",views.TeacherStudentDetailView.as_view(),name="teacher-student-detail",),
     path("student/sessions/list/", views.TeacherStudentLoginSessionView.as_view(), name="StudentLoginSessionView"),
     #* < ==============================[ <- View -> ]============================== > ^#
     path('views/video/list/', views.TeacherVideoViewList.as_view(), name='teacher-video-view-list'),
