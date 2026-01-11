@@ -64,6 +64,10 @@ urlpatterns = [
     #* < ==============================[ <- View -> ]============================== > ^#
     path('views/video/list/', views.TeacherVideoViewList.as_view(), name='teacher-video-view-list'),
     path('views/video/sessions/list/', views.TeacherVideoViewSessionsList.as_view(), name='teacher-video-view-sessions-list'),
+        #* < ==============================[ <- CenterApp -> ]============================== > ^#
+    path('center-app/exam-center/list/', views.TeacherExamCenterList.as_view(), name='exam-center-list'),
+    path('center-app/exam/center/result/list/', views.TeacherResultExamCenterList.as_view(), name='result-exam-center-list'),
+    
     #^ < ==============================[ <- Exam -> ]============================== > ^#
     #^ QuestionCategory
     path('question-categories/', views.TeacherQuestionCategoryListCreateView.as_view(), name='question-category-list-create'),

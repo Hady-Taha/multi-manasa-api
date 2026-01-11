@@ -29,6 +29,7 @@ from .serializers.student.student import*
 from .serializers.subscription.subscription import *
 from .serializers.invoice.Invoice import *
 from .serializers.view.view import ListVideoViewListSerializer,ViewSessionListSerializer
+from .serializers.desktop_app.desktop_serializers import *
 
 #* < ==============================[ <- Authentication -> ]============================== > ^#
 
@@ -536,8 +537,6 @@ class TeacherCenterStudentSignUpView(APIView):
         return Response(status=status.HTTP_200_OK)
 
 
-
-
 class TeacherStudentLoginSessionView(generics.ListAPIView):
     permission_classes = [IsAuthenticated, IsTeacher]
 
@@ -587,6 +586,30 @@ class TeacherVideoViewSessionsList(generics.ListAPIView):
     
     def get_queryset(self):
         return ViewSession.objects.filter(view__video__unit__course__teacher=self.request.user.teacher)
+
+
+
+#ap:CenterApp
+#* < ==============================[ <- CenterApp -> ]============================== > ^#
+
+class TeacherExamCenterList(generics.ListAPIView):
+    queryset = ExamCenter.objects.all()
+    serializer_class = TeacherExamCenterSerializer
+    permission_classes = [IsTeacher]
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filterset_fields = ['id','date','year']
+    search_fields = ['name', 'lecture']
+
+
+class TeacherResultExamCenterList(generics.ListAPIView):
+    queryset = ResultExamCenter.objects.all()
+    serializer_class = TeacherResultExamCenterSerializer
+    permission_classes = [IsTeacher]
+    filter_backends = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    filterset_fields = ['exam','student','exam__date','updated','created']
+    search_fields = ['student__code','student__user__username','student__id','student__parent_phone']
+
+
 
 #ap:Exam
 #^ < ==============================[ <- Exam -> ]============================== > ^#
@@ -2704,7 +2727,7 @@ class TeacherExamsTakenByStudentAPIView(TeacherPermissionMixin, generics.ListAPI
 
         # Get exams taken by the student, filtered by teacher's courses
         exams_taken = Exam.objects.filter(
-            result__student=student
+            results__student=student
         ).filter(
             Q(unit__course__teacher=teacher) |
             Q(video__unit__course__teacher=teacher) |
