@@ -99,6 +99,7 @@ class Unit(models.Model):
 class StreamType(models.TextChoices):
     EASYSTREAM_ENCRYPTED = "easystream_encrypt", "easystream encrypted"
     EASYSTREAM_NOT_ENCRYPTED = "easystream_not_encrypted", "easystream not encrypted"
+    EASYSTREAM_DRM = 'easystream_drm', 'easystream drm',
     YOUTUBE_HIDE = "youtube_hide", "youtube hide"
     YOUTUBE_SHOW = "youtube_show", "youtube show"
     VDOCIPHER = "vdocipher","vdocipher",
@@ -147,32 +148,29 @@ class Video(models.Model):
         if not self.teacher:
             self.teacher = self.unit.course.teacher
 
-    def fetch_stream_link_if_needed(self):
-        """Fetch full stream link if it's an EASYSTREAM_ENCRYPTED type without http(s) prefix."""
-        if self.stream_type != StreamType.EASYSTREAM_ENCRYPTED:
-            return
-
-        if re.match(r'^https?://', self.stream_link):
-            return
-
-        try:
-            url = f"https://stream.easy-tech.ai/video/video/get/?video_uid={self.stream_link}"
-            headers = {'api-key': settings.EASY_STREAM_API_KEY}
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()
-
-            data = response.json()
-            self.stream_link = data.get('stream_url')
-            self.vdocipher_id = data.get('vdocipher_id')
-            self.easystream_video_id = data.get('video_id')
-        
-        except requests.RequestException as e:
-            raise ValidationError(f"Video metadata fetch failed: {e}")
-
     def save(self, *args, **kwargs):
+        # Fetch EasyStream URL if needed
+        if self.stream_type == StreamType.EASYSTREAM_ENCRYPTED and not self.stream_link.startswith("https"):
+            try:
+                url = f"https://stream.easy-tech.ai/video/video/get/?video_uid={self.stream_link}"
+                headers = {'api-key': settings.EASY_STREAM_API_KEY}
+                response = requests.get(url, headers=headers, timeout=10)
+                response.raise_for_status()
+
+                data = response.json()
+                self.stream_link = data.get('stream_url')
+                self.vdocipher_id = data.get('vdocipher_id')
+                self.easystream_video_id = data.get('video_id')
+            except requests.RequestException as e:
+                raise ValidationError(f"Video metadata fetch failed: {e}")
+
+        # Auto order
+        if not self.pk and self.order == 0:
+            last_order = Video.objects.filter(unit__course=self.unit.course).aggregate(models.Max("order"))["order__max"]
+            self.order = (last_order or 0) + 1
         self.assign_teacher_if_missing()
-        self.fetch_stream_link_if_needed()
         super().save(*args, **kwargs)
+
 
 
         

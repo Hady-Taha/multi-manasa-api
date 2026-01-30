@@ -24,11 +24,11 @@ def pay_course(sender, instance, *args, **kwargs):
         
 
 
-@receiver(pre_save, sender=Video)
-def new_video(sender, instance, *args, **kwargs):
-    if not instance.pending:
-        subscriptions_student_ids = Student.objects.filter(coursesubscription__course=instance.unit.course,coursesubscription__active=True).values_list("id",flat=True)
-        text=f"تمت إضافة درس جديد '{instance.name}' إلى الكورس '{instance.unit.course.name}'."
-        notifications_custom_send.delay(list(subscriptions_student_ids),text)
+#@receiver(pre_save, sender=Video)
+#def new_video(sender, instance, *args, **kwargs):
+##    if not instance.pending:
+#       subscriptions_student_ids = Student.objects.filter(coursesubscription__course=instance.unit.course,coursesubscription__active=True).values_list("id",flat=True)
+#        text=f"تمت إضافة درس جديد '{instance.name}' إلى الكورس '{instance.unit.course.name}'."
+#        notifications_custom_send.delay(list(subscriptions_student_ids),text)
         
 

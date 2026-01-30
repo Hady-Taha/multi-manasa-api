@@ -26,7 +26,7 @@ class TeacherListView(generics.ListAPIView):
     search_fields = ['name']
 
     def get_queryset(self):
-        return Teacher.objects.filter(active=True).order_by("-order")
+        return Teacher.objects.filter(active=True)
 
 
 class TeacherSimpleListView(APIView):

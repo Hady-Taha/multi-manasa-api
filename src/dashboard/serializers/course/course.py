@@ -63,7 +63,7 @@ class ListCourseSerializer(serializers.ModelSerializer):
         return File.objects.filter(unit__course=obj).count()
     
     def get_in_course_count(self, obj):
-        return CourseSubscription.objects.filter(course=obj).count()
+        return CourseSubscription.objects.filter(course=obj,active=True).count()
 
 class CreateCourseSerializers(serializers.ModelSerializer):
     category = serializers.PrimaryKeyRelatedField(queryset=CourseCategory.objects.all(), required=False, allow_null=True)

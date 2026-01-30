@@ -250,6 +250,13 @@ class TeacherListVideoView(generics.ListAPIView):
         return Video.objects.filter(unit__course__teacher=self.request.user.teacher, unit_id=unit_id)
 
 
+class TeacherVideoSimpleList(APIView):
+    permission_classes = [IsAuthenticated,IsTeacher]
+    def get(self,request,unit_id,*args, ** kwargs):
+        qr = Video.objects.filter(unit__course__teacher=self.request.user.teacher,unit_id=unit_id).values("id",'name','price')
+        return Response(qr,status=status.HTTP_200_OK)
+
+
 class TeacherAllVideos(generics.ListAPIView):
     serializer_class = TeacherListVideoSerializer
     permission_classes = [IsAuthenticated, IsTeacher]

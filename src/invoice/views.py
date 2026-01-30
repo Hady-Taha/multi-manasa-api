@@ -75,25 +75,43 @@ class PayWithEasyPay(APIView):
         
         # Start with original price
         final_price = Decimal(item.price)
+
+        # APPLY COURSE DISCOUNT (percentage)
+        if hasattr(item, 'discount') and item.discount > 0:
+            course_discount_amount = (
+                final_price * Decimal(item.discount) / Decimal('100')
+            ).quantize(Decimal('0.01'))
+
+            final_price -= course_discount_amount
+
+        # Prevent negative price
+        if final_price < 0:
+            final_price = Decimal('0.00')
+
         applied_promo = None
-        
+
         # APPLY PROMO CODE IF PRESENT
         if promo_code_input:
-            
             try:
                 promo = PromoCode.objects.get(code=promo_code_input)
             except PromoCode.DoesNotExist:
                 return Response({"massage": "كود الخصم غير موجود"}, status=400)
-            
+
             if not promo.is_valid():
                 return Response({"massage": "انتهت صلاحية كود الخصم أو تجاوز الحد المسموح به"}, status=400)
-            
+
             if promo.used_by_students.filter(id=student.id).exists():
                 return Response({"massage": "لقد استخدمت هذا الكود من قبل"}, status=400)
-            
-            # Apply discount
-            discount_amount = (final_price * promo.discount_percent / 100).quantize(Decimal('0.01'))
-            final_price -= discount_amount
+
+            promo_discount_amount = (
+                final_price * Decimal(promo.discount_percent) / Decimal('100')
+            ).quantize(Decimal('0.01'))
+
+            final_price -= promo_discount_amount
+
+            if final_price < 0:
+                final_price = Decimal('0.00')
+
             applied_promo = promo
             
             
