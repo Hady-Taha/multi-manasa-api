@@ -11,24 +11,30 @@ from student.models import Student
 class InvoiceFilter(django_filters.FilterSet):
     created = django_filters.DateFromToRangeFilter()
 
+    student__username = django_filters.CharFilter(
+        field_name='student__user__username',
+        lookup_expr='icontains'
+    )
+    bar_code = django_filters.CharFilter(
+        field_name='item_barcode',
+        lookup_expr='icontains'
+    )
     class Meta:
         model = Invoice
         fields = [
             'teacher',
             'student',
-            'student__username',
+            'student__username',  # بدل student__user__username
             'student__name',
             'item_type',
-            'item_barcode', 
-            'pay_status', 
-            'pay_method',  
+            'pay_status',
+            'pay_method',
             'created',
             'student__year',
-            'item_barcode',
+            'bar_code',
             'item_name',
             'promo_code__code'
-            ]
-
+        ]
 
 
 #^---------------------logs-----------------
