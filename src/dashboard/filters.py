@@ -13,7 +13,21 @@ class InvoiceFilter(django_filters.FilterSet):
 
     class Meta:
         model = Invoice
-        fields = ['teacher','student','item_type','item_barcode', 'pay_status', 'pay_method',  'created','student__year']
+        fields = [
+            'teacher',
+            'student',
+            'student__username',
+            'student__name',
+            'item_type',
+            'item_barcode', 
+            'pay_status', 
+            'pay_method',  
+            'created',
+            'student__year',
+            'item_barcode',
+            'item_name',
+            'promo_code__code'
+            ]
 
 
 
