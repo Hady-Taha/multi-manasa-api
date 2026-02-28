@@ -464,7 +464,7 @@ class AssignGroupToUserView(APIView):
 #* < ==============================[ <- Teacher -> ]============================== > ^#
 
 class TeacherListView(generics.ListAPIView):
-    queryset = Teacher.objects.all().order_by("-order")
+    queryset = Teacher.objects.all().order_by("order")
     serializer_class = TeacherListSerializer
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
     filter_backends = [DjangoFilterBackend, SearchFilter]

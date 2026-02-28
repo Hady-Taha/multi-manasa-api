@@ -99,17 +99,10 @@ class Unit(models.Model):
 class StreamType(models.TextChoices):
     EASYSTREAM_ENCRYPTED = "easystream_encrypt", "easystream encrypted"
     EASYSTREAM_NOT_ENCRYPTED = "easystream_not_encrypted", "easystream not encrypted"
-    EASYSTREAM_DRM = 'easystream_drm', 'easystream drm',
     YOUTUBE_HIDE = "youtube_hide", "youtube hide"
     YOUTUBE_SHOW = "youtube_show", "youtube show"
     VDOCIPHER = "vdocipher","vdocipher",
     VIMEO = "vimeo","vimeo",
-
-
-class PlayerType(models.TextChoices):
-    MEDIA_KIT = "media_kit", "media kit"
-    BETTER_PLAYER = "better_player", "better player"
-    EMBED = "embed", "embed"
 
 
 class Video(models.Model):
@@ -120,22 +113,17 @@ class Video(models.Model):
     can_view = models.IntegerField(default=5)
     views = models.IntegerField(default=0)
     duration = models.IntegerField(blank=True, null=True)
-    stream_type = models.CharField(max_length=24,choices=StreamType.choices)
+    stream_type = models.CharField(max_length=24, choices=StreamType.choices)
     stream_link = models.CharField(max_length=255)
-    player_type = models.CharField(max_length=24,choices=PlayerType.choices,default=PlayerType.BETTER_PLAYER)
-    vdocipher_id = models.CharField(max_length=255,blank=True, null=True)
-    easystream_video_id = models.CharField(max_length=255,blank=True, null=True)
-    order = models.PositiveIntegerField(default=0)
-    price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
-    discount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    order = models.PositiveIntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     publisher_date = models.DateTimeField(blank=True, null=True)
     pending = models.BooleanField(default=False)
     ready = models.BooleanField(default=False)
-    can_buy =  models.BooleanField(default=False)
+    can_buy = models.BooleanField(default=False)
     free = models.BooleanField(default=False)
     points = models.PositiveIntegerField(default=5)
-    is_depends = models.BooleanField(default=False)
-    barcode = models.UUIDField(default=uuid.uuid4,unique=True,editable=False)
+    barcode = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     embed = models.BooleanField(default=False)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -148,29 +136,32 @@ class Video(models.Model):
         if not self.teacher:
             self.teacher = self.unit.course.teacher
 
+    def fetch_stream_link_if_needed(self):
+        """Fetch full stream link if it's an EASYSTREAM_ENCRYPTED type without http(s) prefix."""
+        if self.stream_type != StreamType.EASYSTREAM_ENCRYPTED:
+            return
+
+        if re.match(r'^https?://', self.stream_link):
+            return
+
+        try:
+            url = f"https://stream.easy-tech.ai/video/video/get/?video_uid={self.stream_link}"
+            headers = {'api-key': settings.EASY_STREAM_API_KEY}
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+            self.stream_link = data.get('stream_url')
+            if not self.stream_link:
+                raise ValidationError("Stream URL not found in API response.")
+
+        except requests.RequestException as e:
+            raise ValidationError(f"Video metadata fetch failed: {e}")
+
     def save(self, *args, **kwargs):
-        # Fetch EasyStream URL if needed
-        if self.stream_type == StreamType.EASYSTREAM_ENCRYPTED and not self.stream_link.startswith("https"):
-            try:
-                url = f"https://stream.easy-tech.ai/video/video/get/?video_uid={self.stream_link}"
-                headers = {'api-key': settings.EASY_STREAM_API_KEY}
-                response = requests.get(url, headers=headers, timeout=10)
-                response.raise_for_status()
-
-                data = response.json()
-                self.stream_link = data.get('stream_url')
-                self.vdocipher_id = data.get('vdocipher_id')
-                self.easystream_video_id = data.get('video_id')
-            except requests.RequestException as e:
-                raise ValidationError(f"Video metadata fetch failed: {e}")
-
-        # Auto order
-        if not self.pk and self.order == 0:
-            last_order = Video.objects.filter(unit__course=self.unit.course).aggregate(models.Max("order"))["order__max"]
-            self.order = (last_order or 0) + 1
         self.assign_teacher_if_missing()
+        self.fetch_stream_link_if_needed()
         super().save(*args, **kwargs)
-
 
 
         
@@ -207,7 +198,7 @@ class CourseCode(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE,blank=True, null=True)
     student = models.ForeignKey(Student, on_delete=models.CASCADE,blank=True, null=True)
     available = models.BooleanField(default=True)
-    price = models.DecimalField(max_digits=5, decimal_places=2)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     code = models.CharField(max_length=11, unique=True,blank=True, null=True)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
