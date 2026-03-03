@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     CourseCategory, VideoFile, File, CourseCode, VideoCode,
-    Course, Unit, Video
+    Course, Unit, Video,GoldenCode
 )
 from subscription.models import CourseSubscription,VideoSubscription
 from exam.models import Exam
@@ -153,3 +153,6 @@ class VideoAdmin(admin.ModelAdmin):
         if obj.unit and obj.unit.course:
             return obj.unit.course.name
         return '-'
+    
+
+admin.site.register(GoldenCode)

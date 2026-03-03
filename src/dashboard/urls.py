@@ -100,6 +100,10 @@ urlpatterns = [
     path('codes/student/generate/', views.GenerateTeacherCenterStudentCodes.as_view(), name='generate-student-codes'),
     path('codes/student/list/', views.StudentTeacherCenterCodesListView.as_view(), name='list-student-codes'),
 
+    #Golden Code
+    path('codes/golden-code/generate/', views.GoldenCodeGenerate.as_view(), name='golden-code-generate'),
+    path('codes/golden-code/list/', views.GoldenCodeListView.as_view(), name='golden-code-list'),
+    
     
     #* < ==============================[ <- Invoice -> ]============================== > ^#
     path('invoice/list/', views.InvoiceListView.as_view(), name='invoice-list'),

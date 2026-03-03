@@ -220,4 +220,17 @@ class VideoCode(models.Model):
     code = models.CharField(max_length=11, unique=True,blank=True, null=True)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    
+
+
+
+class GoldenCode(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE,blank=True, null=True)
+    title = models.CharField(max_length=50,blank=True, null=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE,blank=True, null=True)
+    available = models.BooleanField(default=True)
+    code = models.CharField(max_length=11, unique=True,blank=True, null=True)
+    item_type = models.CharField(max_length=20, choices=[('course', 'Course'), ('video', 'Video')], blank=True, null=True)
+    item_name = models.CharField(max_length=255, blank=True, null=True)
+    item_barcode = models.CharField(max_length=100)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
