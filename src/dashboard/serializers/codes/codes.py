@@ -76,6 +76,7 @@ class GoldenCodeSerializer(serializers.ModelSerializer):
         model = GoldenCode
         fields = [
             'id', 
+            'title',
             'code', 
             'teacher',
             'teacher_name',
