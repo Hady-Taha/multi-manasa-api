@@ -5,5 +5,4 @@ urlpatterns = [
     path("easy-pay-call-back/<str:api_key>/", views.EasyPayCallBack.as_view(), name="pay-with-easy-pay"),
     path("pay/code/",views.PayWithCode.as_view(),name="pay-code"),
     path("promo-code-present/<str:promo_code>/",views.GetPromoCodePercentView.as_view(),name="pay-code"),
-    path("pay-with-golden-code/",views.PayWithGoldenCode.as_view(),name="pay-with-golden-code"),
 ]

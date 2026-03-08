@@ -1220,7 +1220,7 @@ class GoldenCodeGenerate(APIView):
 
         # Generate unique numeric codes
         while len(codes_set) < quantity:
-            number = '3' + ''.join(random.choices('0123456789', k=10))  # 11-digit
+            number = 'g' + ''.join(random.choices('0123456789', k=10))  # 11-digit
             if number not in existing_codes and number not in codes_set:
                 codes_set.add(number)
                 codes_to_create.append(GoldenCode(
