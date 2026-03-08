@@ -13,7 +13,7 @@ from rest_framework import generics
 from rest_framework.filters import SearchFilter
 from rest_framework.exceptions import ValidationError
 from student.models import Student
-from course.models import Course, GoldenCode,Video,CourseCode,VideoCode
+from course.models import Course,Video,CourseCode,VideoCode
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from .models import Invoice,InvoiceMethodPayType,InvoicePayStatus,InvoiceItemType,PromoCode
@@ -252,9 +252,7 @@ class PayWithCode(APIView):
         code_type = request.data.get("code_type")
         code = request.data.get("code")
         barcode = request.data.get("barcode")
-        golden_code = request.data.get("golden_code",None)
         student = request.user.student
-
 
         if code_type == 'video':
             return self.handle_video_code(student, code, barcode)
@@ -262,9 +260,6 @@ class PayWithCode(APIView):
         elif code_type == 'course':
             return self.handle_course_code(student, code, barcode)
 
-        elif golden_code:
-            return self.handle_golden_code(student, code, barcode, code_type)
-        
         return Response(
             {"error": "Invalid code type."},
             status=status.HTTP_400_BAD_REQUEST
@@ -292,8 +287,8 @@ class PayWithCode(APIView):
             get_video_code.save()
         else:
             get_video = get_object_or_404(Video, barcode=barcode)
-
-
+            #*check if video is in belong the video
+            
             self.create_invoice(
                 student,
                 get_video,
@@ -344,49 +339,6 @@ class PayWithCode(APIView):
 
         return Response(status=status.HTTP_200_OK)
 
-    def handle_golden_code(self, student, code, barcode,code_type):
-        golden_code = get_object_or_404(GoldenCode, code=code)
-
-        if not golden_code.available:
-            return Response(
-                {"error": "The requested code is no longer available."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if code_type == InvoiceItemType.VIDEO:
-            video = get_object_or_404(Video, barcode=barcode)
-            self.create_invoice(
-                student,
-                video,
-                InvoiceItemType.VIDEO,
-                amount=video.price,
-                code=golden_code.code
-            )
-            golden_code.available = False
-            golden_code.student = student
-            golden_code.item_name = video.name
-            golden_code.item_barcode = video.barcode
-            golden_code.item_type = InvoiceItemType.VIDEO
-            golden_code.save()
-
-        if code_type == InvoiceItemType.COURSE:
-            course = get_object_or_404(Course, barcode=barcode)
-            self.create_invoice(
-                student,
-                course,
-                InvoiceItemType.COURSE,
-                amount=course.price,
-                code=golden_code.code
-            )
-            golden_code.available = False
-            golden_code.student = student
-            golden_code.item_name = course.name
-            golden_code.item_barcode = course.barcode
-            golden_code.item_type = InvoiceItemType.COURSE
-            golden_code.save()
-
-        return Response(status=status.HTTP_200_OK)
-
     def create_invoice(self, student, item, item_type, amount, code):
         Invoice.objects.create(
             student=student,
@@ -401,3 +353,4 @@ class PayWithCode(APIView):
             item_price=amount,
             item_name=item.name,
         )
+

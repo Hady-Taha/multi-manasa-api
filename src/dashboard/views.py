@@ -63,7 +63,7 @@ from .serializers.subscription.subscription import ListStudentCourseSubscription
 from .serializers.exam.exam import *
 from .serializers.info.info_serializers import *
 from .serializers.requestlogs.requestlogs import RequestLogSerializer
-from .serializers.codes.codes import CourseCodeSerializer, GoldenCodeSerializer,VideoCodeSerializer,StudentCenterCodeSerializer
+from .serializers.codes.codes import CourseCodeSerializer,VideoCodeSerializer,StudentCenterCodeSerializer
 from .serializers.view.video_views import *
 from .serializers.desktop_app.desktop_serializers import *
 from .serializers.permissions.permissions import *
@@ -467,7 +467,13 @@ class TeacherListView(generics.ListAPIView):
     queryset = Teacher.objects.all().order_by("order")
     serializer_class = TeacherListSerializer
     permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-    filter_backends = [DjangoFilterBackend, SearchFilter]
+
+    filter_backends = [
+        DjangoFilterBackend,
+        SearchFilter,
+        OrderingFilter,   # 👈 هنا
+    ]
+
     filterset_fields = [
         'id',
         'name',
@@ -475,7 +481,11 @@ class TeacherListView(generics.ListAPIView):
         'active',
         'teacher_course_categories__course_category',
     ]
-    search_fields = ['name','user__username']
+
+    search_fields = ['name', 'user__username']
+
+    ordering_fields = ['order']      # 👈 السماح بالترتيب
+    ordering = ['order']             # 👈 الترتيب الافتراضي
 
 
 class TeacherStudentListView(generics.ListAPIView):
@@ -1198,53 +1208,6 @@ class CodeVideoListView(generics.ListAPIView):
     filterset_fields = ['course','available']
     search_fields = ['title', 'code','student__user__username']
 
-
-
-#* golden Code
-class GoldenCodeGenerate(APIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-    queryset = GoldenCode.objects.all()
-
-    def post(self, request, *args, **kwargs):
-        title = request.data.get("title")
-        quantity = int(request.data.get("quantity", 0))
-
-        if quantity <= 0:
-            return Response({"detail": "Invalid quantity"}, status=status.HTTP_400_BAD_REQUEST)
-
-
-        # Fetch all existing codes
-        existing_codes = set(GoldenCode.objects.values_list("code", flat=True))
-        codes_set = set()
-        codes_to_create = []
-
-        # Generate unique numeric codes
-        while len(codes_set) < quantity:
-            number = 'g' + ''.join(random.choices('0123456789', k=10))  # 11-digit
-            if number not in existing_codes and number not in codes_set:
-                codes_set.add(number)
-                codes_to_create.append(GoldenCode(
-                    code=number,
-                    title=title,
-                ))
-
-        # Bulk insert
-        with transaction.atomic():
-            GoldenCode.objects.bulk_create(codes_to_create, batch_size=10000)
-
-        return Response({
-            "message": f"{quantity} golden codes generated successfully.",
-            "codes": list(codes_set)
-        }, status=status.HTTP_201_CREATED)
-
-
-class GoldenCodeListView(generics.ListAPIView):
-    permission_classes = [IsAuthenticated, CustomDjangoModelPermissions]
-    queryset = GoldenCode.objects.all().order_by("-created")
-    serializer_class = GoldenCodeSerializer
-    filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['available']
-    search_fields = ['title', 'code','student__user__username']
 
 
 #* Student Code

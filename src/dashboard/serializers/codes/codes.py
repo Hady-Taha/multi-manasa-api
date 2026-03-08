@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from course.models import CourseCode,VideoCode,GoldenCode
+from course.models import CourseCode,VideoCode
 from student.models import StudentCenterCode
 
 
@@ -61,30 +61,4 @@ class StudentCenterCodeSerializer(serializers.ModelSerializer):
             'student__id',
             'student__username',
             'student__name',
-        ]
-
-
-
-#* < ==============================[ <- Golden Code -> ]============================== > ^#
-
-class GoldenCodeSerializer(serializers.ModelSerializer):
-    student__name = serializers.CharField(source='student.name', allow_null=True )
-    student__id = serializers.CharField(source='student.id', allow_null=True )
-    student__username = serializers.CharField(source='student.user.username', allow_null=True )
-    teacher_name = serializers.CharField(source='teacher.name', allow_null=True)
-    class Meta:
-        model = GoldenCode
-        fields = [
-            'id', 
-            'title',
-            'code', 
-            'teacher',
-            'teacher_name',
-            'available', 
-            'student__id',
-            'student__username',
-            'student__name',
-            'item_barcode',
-            'item_type',
-            'item_name'
         ]
