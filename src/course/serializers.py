@@ -204,6 +204,7 @@ class FileSerializer(serializers.ModelSerializer):
 class CourseCollectionSerializer(serializers.ModelSerializer):
     course_count = serializers.SerializerMethodField()
     teacher_name = serializers.CharField(source='teacher.name', read_only=True,allow_null=True)
+    category_name = serializers.CharField(source='category.name', read_only=True,allow_null=True)
     class Meta:
         model = CourseCollection
         fields = [
@@ -217,8 +218,9 @@ class CourseCollectionSerializer(serializers.ModelSerializer):
             'discount',
             'pending',
             'course_count',
-            'teacher_name'
+            'teacher_name',
+            'category_name'
             ]
 
     def get_course_count(self, obj):
-        return obj.courses.count()
+        return obj.course.count()
