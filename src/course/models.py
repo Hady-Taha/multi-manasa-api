@@ -175,8 +175,6 @@ class Video(models.Model):
 
 
 
-        
-
 class VideoFile(models.Model):
     name = models.CharField(max_length=50,blank=True, null=True)
     video = models.ForeignKey(Video, related_name="video_files", on_delete=models.CASCADE)
@@ -186,7 +184,7 @@ class VideoFile(models.Model):
 
     def __str__(self):
         return f'File for {self.video.name} - {self.file.name}'
-    
+
 
 
 class File(models.Model):
@@ -201,6 +199,31 @@ class File(models.Model):
     def __str__(self):
         return f'{self.name} - {self.unit.name}'
     
+
+#*============================>Course Collection<============================#*
+
+class CourseCollection(models.Model):
+    teacher = models.ForeignKey(Teacher, related_name='course_collections', on_delete=models.SET_NULL, blank=True, null=True)
+    name = models.CharField(max_length=255)
+    price = models.IntegerField()
+    description = models.TextField(blank=True, null=True)
+    discount = models.IntegerField(default=0)
+    barcode = models.CharField(max_length=36, default=uuid.uuid4, unique=True, editable=False)
+    year = models.ForeignKey(Year, on_delete=models.CASCADE)
+    points = models.PositiveIntegerField(default=5)
+    cover = models.FileField(upload_to='covers', max_length=500,validators=[FileExtensionValidator(allowed_extensions=['png','jpg','jpeg','webp'])])
+    promo_video = models.CharField(max_length=350,blank=True, null=True)
+    course = models.ManyToManyField(Course,related_name="courses")
+    can_buy = models.BooleanField(default=True)
+    order = models.IntegerField(default=0)
+    free = models.BooleanField(default=False)
+    publisher_date = models.DateTimeField(blank=True, null=True)
+    pending = models.BooleanField(default=False)
+    updated  = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name} | id : {self.id}'
 
 #*============================>CODES<============================#*
 
@@ -231,4 +254,5 @@ class VideoCode(models.Model):
     code = models.CharField(max_length=11, unique=True,blank=True, null=True)
     updated = models.DateTimeField(auto_now=True)
     created = models.DateTimeField(auto_now_add=True)
-    
+
+

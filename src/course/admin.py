@@ -1,11 +1,13 @@
 from django.contrib import admin
 from .models import (
     CourseCategory, VideoFile, File, CourseCode, VideoCode,
-    Course, Unit, Video
+    Course, Unit, Video,CourseCollection
 )
 from subscription.models import CourseSubscription,VideoSubscription
 from exam.models import Exam
 from django.db.models import Count
+
+admin.site.register(CourseCollection)
 
 class SubUnitInline(admin.TabularInline):
     model = Unit
