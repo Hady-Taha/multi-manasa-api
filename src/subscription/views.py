@@ -250,8 +250,27 @@ class CourseAccessContent(APIView):
             }
             response = requests.post(url,data=data,headers=header)
             return Response({**CourseVideoSerializer(video,context={"request": self.request}).data, "credentials": response.json()}, status=status.HTTP_200_OK)
+        
+        # AmaanStreamDrm
+        if video.stream_type == StreamType.AMAAN_STREAM:
+            url = f'https://test.easy-stream.net/api/video/generate-otp/{video.stream_link}/'
+            headers = {
+                'Authorization': f"api-key {settings.AMAAN_STREAM_API_KEY}",
+                'Content-Type': "application/json",
+                'Accept': "application/json"
+            }
+            data =  json.dumps({
+                "wid":request.user.username
+            })
+            response = requests.post(
+                url=url,
+                headers=headers,
+                data=data
+            )
+            
+            return Response({**CourseVideoSerializer(video,context={"request": self.request}).data, "credentials": response.json()}, status=status.HTTP_200_OK)
 
-
+        
     def access_file(self, course, file_id):
         file = get_object_or_404(File, id=file_id)
         # 1. validate if file in the same course
