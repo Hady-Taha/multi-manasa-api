@@ -257,3 +257,15 @@ class VideoCode(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
 
+class CourseCollectionCode(models.Model):
+    title = models.CharField(max_length=50,blank=True, null=True)
+    course_collection = models.ForeignKey(CourseCollection, on_delete=models.CASCADE,blank=True, null=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE,blank=True, null=True)
+    available = models.BooleanField(default=True)
+    price = models.DecimalField(max_digits=5, decimal_places=2)
+    code = models.CharField(max_length=11, unique=True,blank=True, null=True)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.code} - {self.course_collection.name} - {self.student.user.username if self.student else "No Student"}'

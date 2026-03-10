@@ -1261,6 +1261,9 @@ class StudentTeacherCenterCodesListView(generics.ListAPIView):
         ]
 
 
+#* Course Collection Code
+
+
 #ap:Invoice
 #* < ==============================[ <- Invoice -> ]============================== > ^#
 

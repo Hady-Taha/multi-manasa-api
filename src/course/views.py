@@ -207,7 +207,7 @@ class CourseCollectionListView(generics.ListAPIView):
     serializer_class = CourseCollectionSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    filterset_fields = ['teacher','category']
+    filterset_fields = ['teacher','category','year']
     
     def get_queryset(self):
         student = self.request.user.student
@@ -217,4 +217,6 @@ class CourseCollectionListView(generics.ListAPIView):
         queryset = CourseCollection.objects.filter(year=student.year.id)
         
         return queryset
+    
+
     
