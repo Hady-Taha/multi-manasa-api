@@ -12,8 +12,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
 from exam.serializers import ExamSerializer
-from .models import CourseCategory,Course,Unit
-from .serializers import TeacherListSerializer,CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
+from .models import CourseCategory,Course, CourseCollection,Unit
+from .serializers import CourseCollectionSerializer, TeacherListSerializer,CourseCategorySerializer,CourseSerializer,UnitSerializer,VideoSerializer,FileSerializer,SubunitSerializer
 from teacher.models import Teacher,TeacherCenterStudentCode,TeacherCourseCategory
 
 
@@ -200,4 +200,21 @@ class UnitContent(APIView):
             key=lambda x: x.get('order', 0)
         )
         return combined_content
+    
+#* < ==============================[ <- Course Collection -> ]============================== > ^#
+
+class CourseCollectionListView(generics.ListAPIView):
+    serializer_class = CourseCollectionSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['teacher','category']
+    
+    def get_queryset(self):
+        student = self.request.user.student
+        
+        if not student.year:
+            return CourseCollection.objects.all()  # Return all collections if year is not set
+        queryset = CourseCollection.objects.filter(year=student.year.id)
+        
+        return queryset
     

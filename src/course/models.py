@@ -214,6 +214,7 @@ class CourseCollection(models.Model):
     cover = models.FileField(upload_to='covers', max_length=500,validators=[FileExtensionValidator(allowed_extensions=['png','jpg','jpeg','webp'])])
     promo_video = models.CharField(max_length=350,blank=True, null=True)
     course = models.ManyToManyField(Course,related_name="courses")
+    category = models.ForeignKey(CourseCategory, on_delete=models.SET_NULL,blank=True, null=True)
     can_buy = models.BooleanField(default=True)
     order = models.IntegerField(default=0)
     free = models.BooleanField(default=False)

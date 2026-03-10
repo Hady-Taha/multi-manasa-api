@@ -199,3 +199,26 @@ class FileSerializer(serializers.ModelSerializer):
             ]
         
 
+#* < ==============================[ <- Course Collection -> ]============================== > ^#
+
+class CourseCollectionSerializer(serializers.ModelSerializer):
+    course_count = serializers.SerializerMethodField()
+    teacher_name = serializers.CharField(source='teacher.name', read_only=True,allow_null=True)
+    class Meta:
+        model = CourseCollection
+        fields = [
+            'id', 
+            'name', 
+            'description', 
+            'cover',
+            'barcode',
+            'can_buy',
+            'free',
+            'discount',
+            'pending',
+            'course_count',
+            'teacher_name'
+            ]
+
+    def get_course_count(self, obj):
+        return obj.courses.count()
